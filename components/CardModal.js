@@ -8,6 +8,8 @@ export default function CardModal({ item, onClose, onSave }) {
   const [dragging, setDragging] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [copiedField, setCopiedField] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [fileError, setFileError] = useState("");
   const fileInputRef = useRef(null);
 
   if (!item) return null;
@@ -16,17 +18,32 @@ export default function CardModal({ item, onClose, onSave }) {
     setForm((f) => ({ ...f, ...fields }));
   }
 
-  function addFile(file) {
-    patch({
-      files: [
-        ...form.files,
-        { name: file.name, size: Math.round(file.size / 1024) + " KB", addedAt: new Date().toISOString().slice(0, 10) },
-      ],
-    });
+  async function addFile(file) {
+    setFileError("");
+    setUploading(true);
+    try {
+      const body = new FormData();
+      body.append("file", file);
+      const res = await fetch(`/api/items/${item.id}/files`, { method: "POST", body });
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({}));
+        throw new Error(error || "upload failed");
+      }
+      const uploaded = await res.json();
+      patch({ files: [...form.files, uploaded] });
+    } catch (err) {
+      setFileError(err.message);
+    } finally {
+      setUploading(false);
+    }
   }
 
-  function removeFile(idx) {
+  async function removeFile(idx) {
+    const target = form.files[idx];
     patch({ files: form.files.filter((_, i) => i !== idx) });
+    if (target?.id) {
+      await fetch(`/api/items/${item.id}/files/${target.id}`, { method: "DELETE" }).catch(() => {});
+    }
   }
 
   async function handleCopy(field, value) {
@@ -137,7 +154,7 @@ export default function CardModal({ item, onClose, onSave }) {
         <label className="section-label">Document</label>
         <div
           className={`dropzone ${dragging ? "drag" : ""}`}
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => !uploading && fileInputRef.current?.click()}
           onDragOver={(e) => {
             e.preventDefault();
             setDragging(true);
@@ -146,12 +163,18 @@ export default function CardModal({ item, onClose, onSave }) {
           onDrop={(e) => {
             e.preventDefault();
             setDragging(false);
-            if (e.dataTransfer.files.length) addFile(e.dataTransfer.files[0]);
+            if (e.dataTransfer.files.length && !uploading) addFile(e.dataTransfer.files[0]);
           }}
         >
-          <strong>Drop a file here</strong> or click to attach
-          <br />
-          (demo — stores the filename; a real build pushes straight into your Drive folder)
+          {uploading ? (
+            <strong>Uploading to Drive…</strong>
+          ) : (
+            <>
+              <strong>Drop a file here</strong> or click to attach
+              <br />
+              pushes straight into the shared Drive folder
+            </>
+          )}
           <input
             ref={fileInputRef}
             type="file"
@@ -159,11 +182,20 @@ export default function CardModal({ item, onClose, onSave }) {
             onChange={(e) => e.target.files.length && addFile(e.target.files[0])}
           />
         </div>
+        {fileError && <div style={{ color: "var(--rust)" }}>{fileError}</div>}
         <div className="file-list">
           {form.files.map((f, idx) => (
-            <div className="file-item" key={idx}>
+            <div className="file-item" key={f.id || idx}>
               <span className="fname">
-                📄 {f.name} <span style={{ color: "var(--muted)" }}>· {f.size}</span>
+                📄{" "}
+                {f.url ? (
+                  <a href={f.url} target="_blank" rel="noreferrer">
+                    {f.name}
+                  </a>
+                ) : (
+                  f.name
+                )}{" "}
+                <span style={{ color: "var(--muted)" }}>· {f.size}</span>
               </span>
               <button onClick={() => removeFile(idx)}>remove</button>
             </div>
