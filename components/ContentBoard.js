@@ -1,12 +1,13 @@
 "use client";
 import { useState } from "react";
 import Card from "./Card";
-import { CONTENT_STATUSES, PEOPLE, TYPES } from "../lib/data";
+import { CONTENT_STATUSES, TYPES, derivePeople } from "../lib/data";
 
 export default function ContentBoard({ items, onOpenCard, onMove }) {
   const [filterPerson, setFilterPerson] = useState("All");
   const [filterType, setFilterType] = useState("All");
   const [dragOverCol, setDragOverCol] = useState(null);
+  const people = derivePeople(items);
 
   const filtered = items.filter(
     (i) => (filterPerson === "All" || i.person === filterPerson) && (filterType === "All" || i.type === filterType)
@@ -17,7 +18,7 @@ export default function ContentBoard({ items, onOpenCard, onMove }) {
       <div className="filters">
         <select value={filterPerson} onChange={(e) => setFilterPerson(e.target.value)}>
           <option value="All">All writers</option>
-          {PEOPLE.map((p) => (
+          {people.map((p) => (
             <option key={p} value={p}>
               {p}
             </option>

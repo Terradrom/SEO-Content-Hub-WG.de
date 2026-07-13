@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Nav from "./Nav";
 import ContentBoard from "./ContentBoard";
 import UploadBoard from "./UploadBoard";
@@ -7,36 +7,50 @@ import ManagerDashboard from "./ManagerDashboard";
 import TopicMap from "./TopicMap";
 import BonusArcade from "./BonusArcade";
 import CardModal from "./CardModal";
-import { getSeedItems, getDataProvenance } from "../lib/data";
+import { fetchItems, patchItem, getDataProvenance } from "../lib/data";
 
 export default function AppShell() {
-  const [items, setItems] = useState(() => getSeedItems());
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
   const [view, setView] = useState("content");
   const [openCardId, setOpenCardId] = useState(null);
+
+  useEffect(() => {
+    fetchItems()
+      .then(setItems)
+      .catch((err) => setLoadError(err.message))
+      .finally(() => setLoading(false));
+  }, []);
 
   const openItem = items.find((i) => i.id === openCardId) || null;
   const provenance = getDataProvenance();
 
-  function moveItem(id, newStatus, field) {
+  async function moveItem(id, newStatus, field) {
     // field is "contentStatus" on the content board, "uploadStatus" on the upload board
-    setItems((prev) =>
-      prev.map((it) => {
-        if (it.id !== id) return it;
-        const patch = { [field]: newStatus };
-        if (field === "contentStatus" && newStatus === "Ready for Upload" && !it.uploadStatus) {
-          patch.uploadStatus = "Queued";
-        }
-        return { ...it, ...patch };
-      })
-    );
+    const current = items.find((it) => it.id === id);
+    if (!current) return;
+    const patch = { [field]: newStatus };
+    if (field === "contentStatus" && newStatus === "Ready for Upload" && !current.uploadStatus) {
+      patch.uploadStatus = "Queued";
+    }
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+    try {
+      await patchItem(id, patch);
+    } catch (err) {
+      setItems((prev) => prev.map((it) => (it.id === id ? current : it))); // revert on failure
+    }
   }
 
-  function saveCard(next) {
-    // TODO(backend): swap this for a PATCH to your API / database.
-    return new Promise((resolve) => {
-      setItems((prev) => prev.map((it) => (it.id === next.id ? { ...it, ...next } : it)));
-      setTimeout(resolve, 150); // tiny delay so the "saving…" state is visible
-    });
+  async function saveCard(next) {
+    const prevItems = items;
+    setItems((prev) => prev.map((it) => (it.id === next.id ? { ...it, ...next } : it)));
+    try {
+      await patchItem(next.id, next);
+    } catch (err) {
+      setItems(prevItems); // revert on failure
+      throw err;
+    }
   }
 
   return (
@@ -58,15 +72,30 @@ export default function AppShell() {
 
       <Nav view={view} setView={setView} />
 
-      {view === "content" && (
-        <ContentBoard items={items} onOpenCard={setOpenCardId} onMove={(id, status) => moveItem(id, status, "contentStatus")} />
+      {loading && <p className="note">Loading items…</p>}
+      {loadError && <p className="note" style={{ color: "var(--rust)" }}>Couldn&apos;t load items: {loadError}</p>}
+
+      {!loading && !loadError && (
+        <>
+          {view === "content" && (
+            <ContentBoard
+              items={items}
+              onOpenCard={setOpenCardId}
+              onMove={(id, status) => moveItem(id, status, "contentStatus")}
+            />
+          )}
+          {view === "upload" && (
+            <UploadBoard
+              items={items}
+              onOpenCard={setOpenCardId}
+              onMove={(id, status) => moveItem(id, status, "uploadStatus")}
+            />
+          )}
+          {view === "manager" && <ManagerDashboard items={items} />}
+          {view === "map" && <TopicMap />}
+          {view === "bonus" && <BonusArcade />}
+        </>
       )}
-      {view === "upload" && (
-        <UploadBoard items={items} onOpenCard={setOpenCardId} onMove={(id, status) => moveItem(id, status, "uploadStatus")} />
-      )}
-      {view === "manager" && <ManagerDashboard items={items} />}
-      {view === "map" && <TopicMap />}
-      {view === "bonus" && <BonusArcade />}
 
       {openItem && <CardModal item={openItem} onClose={() => setOpenCardId(null)} onSave={saveCard} />}
     </div>

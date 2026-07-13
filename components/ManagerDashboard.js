@@ -1,5 +1,5 @@
 "use client";
-import { PEOPLE } from "../lib/data";
+import { derivePeople } from "../lib/data";
 import { daysUntil } from "../lib/format";
 
 function nextDeadlineFor(items, person) {
@@ -12,6 +12,7 @@ function nextDeadlineFor(items, person) {
 }
 
 export default function ManagerDashboard({ items }) {
+  const people = derivePeople(items);
   const totalContentDone = items.filter((i) => i.contentStatus === "Ready for Upload").length;
   const totalLive = items.filter((i) => i.uploadStatus === "Live").length;
   const totalIssues = items.filter((i) => i.uploadStatus === "Issues").length;
@@ -30,7 +31,7 @@ export default function ManagerDashboard({ items }) {
     <>
       <h3 style={sectionTitle}>Content team — by writer</h3>
       <section className="dash">
-        {PEOPLE.map((p) => {
+        {people.map((p) => {
           const personItems = items.filter((i) => i.person === p);
           const done = personItems.filter((i) => i.contentStatus === "Ready for Upload").length;
           const pct = personItems.length ? Math.round((done / personItems.length) * 100) : 0;
