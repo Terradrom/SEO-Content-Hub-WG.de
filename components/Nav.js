@@ -1,17 +1,18 @@
 "use client";
 
 const TABS = [
-  { id: "content", label: "Content Team" },
-  { id: "upload", label: "Upload Team" },
-  { id: "manager", label: "Manager" },
-  { id: "map", label: "Topic Map" },
-  { id: "bonus", label: "Bonus Arcade" },
+  { id: "content", label: "Content Team", roles: ["content", "manager"] },
+  { id: "upload", label: "Upload Team", roles: ["upload", "manager"] },
+  { id: "manager", label: "Manager", roles: ["manager"] },
+  { id: "map", label: "Topic Map", roles: ["content", "upload", "manager"] },
+  { id: "bonus", label: "Bonus Arcade", roles: ["content", "upload", "manager"] },
 ];
 
-export default function Nav({ view, setView }) {
+export default function Nav({ view, setView, role }) {
+  const tabs = TABS.filter((t) => t.roles.includes(role));
   return (
     <nav className="nav">
-      {TABS.map((t) => (
+      {tabs.map((t) => (
         <button key={t.id} className={view === t.id ? "active" : ""} onClick={() => setView(t.id)}>
           {t.label}
         </button>

@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import Nav from "./Nav";
 import ContentBoard from "./ContentBoard";
 import UploadBoard from "./UploadBoard";
@@ -8,13 +9,24 @@ import TopicMap from "./TopicMap";
 import BonusArcade from "./BonusArcade";
 import CardModal from "./CardModal";
 import { fetchItems, patchItem, getDataProvenance } from "../lib/data";
+import { supabaseBrowser } from "../lib/supabase-browser";
 
-export default function AppShell() {
+const DEFAULT_VIEW_BY_ROLE = { content: "content", upload: "upload", manager: "content" };
+
+export default function AppShell({ user, profile }) {
+  const router = useRouter();
+  const role = profile?.role || null;
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
-  const [view, setView] = useState("content");
+  const [view, setView] = useState(DEFAULT_VIEW_BY_ROLE[role] || "content");
   const [openCardId, setOpenCardId] = useState(null);
+
+  async function signOut() {
+    await supabaseBrowser().auth.signOut();
+    router.push("/login");
+    router.refresh();
+  }
 
   useEffect(() => {
     fetchItems()
@@ -68,9 +80,15 @@ export default function AppShell() {
             data as of {provenance.importedAt?.slice(0, 10)} · {provenance.sourceFile} · {provenance.itemCount} items
           </div>
         )}
+        <div className="hint" style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <span>
+            {user?.email} {role ? `· ${role}` : "· no role assigned yet — ask your manager"}
+          </span>
+          <button onClick={signOut}>Sign out</button>
+        </div>
       </header>
 
-      <Nav view={view} setView={setView} />
+      <Nav view={view} setView={setView} role={role} />
 
       {loading && <p className="note">Loading items…</p>}
       {loadError && <p className="note" style={{ color: "var(--rust)" }}>Couldn&apos;t load items: {loadError}</p>}
@@ -93,7 +111,7 @@ export default function AppShell() {
           )}
           {view === "manager" && <ManagerDashboard items={items} />}
           {view === "map" && <TopicMap />}
-          {view === "bonus" && <BonusArcade />}
+          {view === "bonus" && <BonusArcade role={role} />}
         </>
       )}
 

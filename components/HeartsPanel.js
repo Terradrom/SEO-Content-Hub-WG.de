@@ -2,8 +2,6 @@
 import { useState } from "react";
 import { UPLOADER_SEEDS } from "../lib/data";
 
-const MANAGER_PIN = "2026"; // TODO(backend): replace with real auth (see README)
-
 function makeShards() {
   return Array.from({ length: 7 }, () => {
     const angle = Math.random() * 2 * Math.PI;
@@ -18,10 +16,9 @@ function makeShards() {
   });
 }
 
-export default function HeartsPanel() {
+export default function HeartsPanel({ role }) {
   const [uploaders, setUploaders] = useState(() => UPLOADER_SEEDS.map((u) => ({ ...u })));
-  const [managerMode, setManagerMode] = useState(false);
-  const [pin, setPin] = useState("");
+  const managerMode = role === "manager";
   const [breaking, setBreaking] = useState(null); // { ownerId, liveIndex, shards }
 
   function startReview(id) {
@@ -58,10 +55,6 @@ export default function HeartsPanel() {
     }, 260);
   }
 
-  function login() {
-    setManagerMode(pin === MANAGER_PIN);
-  }
-
   return (
     <section className="panel">
       <div className="panel-head">
@@ -72,34 +65,15 @@ export default function HeartsPanel() {
             breaks one heart. Lose all 3 before review ends → no bonus. End review with a heart left → 35 RM.
           </p>
         </div>
-        <span className="rule-chip">{managerMode ? "🔓 manager mode" : "🔒 viewer mode"}</span>
+        <span className="rule-chip">{managerMode ? "🔓 manager" : "🔒 viewer"}</span>
       </div>
 
       <div className="manager-gate">
         {managerMode ? (
-          <>
-            <span className="status on">Logged in as manager — you can break hearts</span>
-            <button
-              style={{ background: "var(--ink)", color: "var(--paper)", border: "1px solid var(--line-strong)" }}
-              onClick={() => setManagerMode(false)}
-            >
-              Log out
-            </button>
-          </>
+          <span className="status on">Signed in as manager — you can break hearts</span>
         ) : (
-          <>
-            <input
-              type="password"
-              placeholder="manager PIN"
-              maxLength={6}
-              value={pin}
-              onChange={(e) => setPin(e.target.value)}
-            />
-            <button onClick={login}>Unlock manager mode</button>
-            <span className="status">only a logged-in manager can break a heart</span>
-          </>
+          <span className="status">only your manager account can break a heart</span>
         )}
-        <small>Demo PIN: 2026 — in the real build this is your actual manager login, not a shared code.</small>
       </div>
 
       <div className="up-grid">
