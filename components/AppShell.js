@@ -68,23 +68,27 @@ export default function AppShell({ user, profile }) {
   return (
     <div className="wrap">
       <header className="masthead">
-        <div>
+        <div className="masthead-title">
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
             <h1>Content Hub</h1>
             <span className="stamp-mini">Live board</span>
           </div>
           <p>Content team drafts &amp; uploads → Data Entry team publishes &amp; QAs. Two queues, one source of truth.</p>
         </div>
-        {provenance && (
-          <div className="hint" title="Regenerate via scripts/import_from_xlsx.py">
-            data as of {provenance.importedAt?.slice(0, 10)} · {provenance.sourceFile} · {provenance.itemCount} items
+        <div className="masthead-meta">
+          {provenance && (
+            <div className="hint" title="Regenerate via scripts/import_from_xlsx.py">
+              data as of {provenance.importedAt?.slice(0, 10)} · {provenance.sourceFile} · {provenance.itemCount} items
+            </div>
+          )}
+          <div className="account-bar">
+            <span className="hint">
+              {user?.email} {role ? `· ${role}` : "· no role assigned yet — ask your manager"}
+            </span>
+            <button className="signout-btn" onClick={signOut}>
+              Sign out
+            </button>
           </div>
-        )}
-        <div className="hint" style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <span>
-            {user?.email} {role ? `· ${role}` : "· no role assigned yet — ask your manager"}
-          </span>
-          <button onClick={signOut}>Sign out</button>
         </div>
       </header>
 
@@ -112,7 +116,7 @@ export default function AppShell({ user, profile }) {
           )}
           {view === "manager" && <ManagerDashboard items={items} />}
           {view === "map" && <TopicMap />}
-          {view === "bonus" && <BonusArcade role={role} />}
+          {view === "bonus" && <BonusArcade role={role} items={items} />}
         </>
       )}
 

@@ -2,15 +2,14 @@
 import RaceTrack from "./RaceTrack";
 import HeartsPanel from "./HeartsPanel";
 
-export default function BonusArcade({ role }) {
+export default function BonusArcade({ role, items }) {
   return (
     <>
-      <RaceTrack />
+      <RaceTrack items={items} />
       <HeartsPanel role={role} />
       <p className="note">
-        <b>This is still demo logic:</b> both mechanics run on local state that resets on refresh. Wiring them up for
-        real means the race reads live task-completion timestamps and the manager PIN becomes a proper login tied to
-        your team&apos;s accounts. See README → Next steps.
+        <b>Still demo logic:</b> Quality Hearts still runs on local state that resets on refresh — wiring uploader
+        reviews to real data is a follow-up (needs a review-tracking table). Speed Race above is live.
       </p>
     </>
   );
