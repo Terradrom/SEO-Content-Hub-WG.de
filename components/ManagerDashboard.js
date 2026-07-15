@@ -69,8 +69,10 @@ function NotificationPauses() {
     <div className="upload-gate" style={{ marginTop: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
         <span>
-          <b style={{ color: "var(--paper)" }}>Overdue email reminders</b> — writers with overdue items get emailed
-          daily at 08:00 UTC; you get a full summary. Pause a specific person below (e.g. while they're out sick).
+          <b style={{ color: "var(--paper)" }}>Overdue email reminders</b> — once an item is 3+ days late, its writer
+          gets emailed once a day (08:00 UTC) until it's moved to Ready for Upload; you get a full daily summary.
+          Pause a specific person below (e.g. while they're out sick) — this button runs a real check immediately,
+          it's not a test.
         </span>
         <button className="mini-btn" onClick={runCheckNow} disabled={checking}>
           {checking ? "running…" : "send reminder check now"}
