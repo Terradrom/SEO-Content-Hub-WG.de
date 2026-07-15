@@ -48,7 +48,7 @@ export async function GET(request) {
   }
 
   for (const manager of managers) {
-    await sendManagerSummary(manager.email, byPerson, uploadIssues);
+    await sendManagerSummary(manager.email, byPerson, uploadIssues, manager.display_name);
   }
 
   return NextResponse.json({
