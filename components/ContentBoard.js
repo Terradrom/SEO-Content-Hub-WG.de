@@ -3,27 +3,34 @@ import { useState } from "react";
 import Card from "./Card";
 import { CONTENT_STATUSES, TYPES, derivePeople } from "../lib/data";
 
-export default function ContentBoard({ items, onOpenCard, onMove }) {
-  const [filterPerson, setFilterPerson] = useState("All");
+export default function ContentBoard({ items, onOpenCard, onMove, profile }) {
+  const isManager = profile?.role === "manager";
+  const ownName = profile?.display_name;
+  const [filterPerson, setFilterPerson] = useState(isManager ? "All" : ownName || "All");
   const [filterType, setFilterType] = useState("All");
   const [dragOverCol, setDragOverCol] = useState(null);
   const people = derivePeople(items);
 
+  const effectivePerson = isManager ? filterPerson : ownName || "All";
   const filtered = items.filter(
-    (i) => (filterPerson === "All" || i.person === filterPerson) && (filterType === "All" || i.type === filterType)
+    (i) => (effectivePerson === "All" || i.person === effectivePerson) && (filterType === "All" || i.type === filterType)
   );
 
   return (
     <>
       <div className="filters">
-        <select value={filterPerson} onChange={(e) => setFilterPerson(e.target.value)}>
-          <option value="All">All writers</option>
-          {people.map((p) => (
-            <option key={p} value={p}>
-              {p}
-            </option>
-          ))}
-        </select>
+        {isManager ? (
+          <select value={filterPerson} onChange={(e) => setFilterPerson(e.target.value)}>
+            <option value="All">All writers</option>
+            {people.map((p) => (
+              <option key={p} value={p}>
+                {p}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span className="hint">showing your tasks ({ownName || "unassigned"})</span>
+        )}
         <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
           <option value="All">All content types</option>
           {TYPES.map((t) => (

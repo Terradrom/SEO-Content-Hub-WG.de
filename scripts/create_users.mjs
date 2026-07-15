@@ -12,6 +12,7 @@ const USERS = [
   { email: "tarynkondrollochis@gmail.com", role: "content", name: "Mia" },
   { email: "ashveenaanne@gmail.com", role: "content", name: "Ashveena" },
   { email: "michelle.bridget@gmail.com", role: "content", name: "Michelle" },
+  { email: "adam.kondrollochis@gmail.com", role: "upload", name: "Adam" },
 ];
 
 function tempPassword() {

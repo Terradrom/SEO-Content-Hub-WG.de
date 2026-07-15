@@ -108,7 +108,7 @@ def to_app_item(tab_name, row, idx):
 
     keywords = row.get("keywords") or ""
     if isinstance(keywords, str):
-        keywords = keywords.replace("\u0080\u0094", "—")[:220]
+        keywords = keywords.replace("\u0080\u0094", "—")
 
     return {
         "id": f"{tab_name.lower().replace(' ', '-')}-{idx}",

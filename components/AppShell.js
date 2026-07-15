@@ -100,6 +100,7 @@ export default function AppShell({ user, profile }) {
               items={items}
               onOpenCard={setOpenCardId}
               onMove={(id, status) => moveItem(id, status, "contentStatus")}
+              profile={profile}
             />
           )}
           {view === "upload" && (

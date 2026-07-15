@@ -17,14 +17,16 @@ export async function POST(request, { params }) {
     return NextResponse.json({ error: "no file in request" }, { status: 400 });
   }
 
+  const supabase = supabaseAdmin();
+  const { data: item } = await supabase.from("items").select("type").eq("id", params.id).single();
+
   let uploaded;
   try {
-    uploaded = await uploadFileToDrive(file);
+    uploaded = await uploadFileToDrive(file, item?.type);
   } catch (err) {
     return NextResponse.json({ error: `Drive upload failed: ${err.message}` }, { status: 502 });
   }
 
-  const supabase = supabaseAdmin();
   const sizeLabel = Math.round(file.size / 1024) + " KB";
   const { data, error } = await supabase
     .from("item_files")
