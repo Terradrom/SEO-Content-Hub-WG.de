@@ -126,6 +126,13 @@ function toAppItem(tabName, row, idx) {
     keywords = keywords.split(mojibakePair).join(String.fromCharCode(0x2014));
     const strayPattern = new RegExp(String.fromCharCode(0xe2) + "(?=" + String.fromCharCode(0x2014) + ")", "g");
     keywords = keywords.replace(strayPattern, "");
+
+    // Flatten the sheet's "a) list1 — b) list2" grouping into one plain
+    // comma-separated list — the lettered split was a spreadsheet
+    // formatting artifact, not meaningful structure.
+    const emdash = String.fromCharCode(0x2014);
+    const groupSplit = new RegExp("\\s*" + emdash + "\\s*[a-z]\\)\\s*", "gi");
+    keywords = keywords.replace(groupSplit, ", ").replace(/^[a-z]\)\s*/i, "").trim();
   } else {
     keywords = "";
   }

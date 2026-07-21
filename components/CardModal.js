@@ -88,7 +88,12 @@ export default function CardModal({ item, onClose, onSave }) {
           </button>
         </div>
         <div className="kw-box">
-          <b style={{ color: "var(--paper)", fontFamily: "Inter" }}>Keywords</b>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+            <b style={{ color: "var(--paper)", fontFamily: "Inter" }}>Keywords</b>
+            <button className="copy-btn" onClick={() => handleCopy("keywords", form.keywords)} style={{ flexShrink: 0 }}>
+              {copiedField === "keywords" ? "copied ✓" : "copy all"}
+            </button>
+          </div>
           <br />
           {form.keywords || "—"}
         </div>

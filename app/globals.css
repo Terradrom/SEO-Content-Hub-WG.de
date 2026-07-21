@@ -10,6 +10,19 @@
 }
 *{box-sizing:border-box;}
 html,body{margin:0;padding:0;}
+.scroll-top-btn{
+  position:fixed;right:18px;bottom:calc(18px + env(safe-area-inset-bottom, 0px));
+  width:46px;height:46px;border-radius:50%;
+  background:var(--grad-accent);color:var(--ink);border:none;
+  font-size:20px;font-weight:700;cursor:pointer;
+  box-shadow:0 8px 24px -6px rgba(0,224,138,0.5);
+  z-index:60;animation:fadeUp .2s ease;
+  display:flex;align-items:center;justify-content:center;
+}
+.scroll-top-btn:hover{filter:brightness(1.08);}
+@media(max-width:640px){
+  .scroll-top-btn{width:44px;height:44px;right:14px;bottom:calc(14px + env(safe-area-inset-bottom, 0px));}
+}
 body{
   background:
     radial-gradient(ellipse 900px 600px at 8% -10%, rgba(0,224,138,0.16) 0%, transparent 60%),
@@ -162,6 +175,12 @@ svg text{font-family:'IBM Plex Mono',monospace;fill:var(--paper);}
 .map-panel{position:relative;z-index:2;padding:14px 18px 18px;border-top:1px solid var(--line);font-size:12.5px;color:var(--muted);min-height:20px;}
 .map-panel b{color:var(--paper);}
 .map-panel .chip{display:inline-block;background:var(--ink-3);border:1px solid var(--line-strong);border-radius:99px;padding:3px 10px;margin:4px 6px 0 0;font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--paper);}
+.map-search-row{position:relative;z-index:3;padding:14px 18px 0;}
+.map-search-row input{width:100%;font-family:'Inter';background:var(--ink-3);color:var(--paper);border:1px solid var(--line-strong);border-radius:8px;padding:9px 12px;font-size:13px;}
+.map-search-row input:focus{outline:2px solid var(--accent);outline-offset:1px;}
+.map-search-results{position:absolute;top:100%;left:18px;right:18px;background:var(--ink-2);border:1px solid var(--line-strong);border-radius:8px;margin-top:4px;overflow:hidden;box-shadow:0 12px 30px -10px rgba(0,0,0,0.6);}
+.map-search-result{padding:9px 12px;font-size:12.5px;color:var(--paper);cursor:pointer;display:flex;align-items:center;gap:8px;transition:background .12s;}
+.map-search-result:hover{background:var(--ink-3);}
 
 /* bonus arcade */
 section.panel{background:var(--ink-2);border:1px solid var(--line-strong);border-radius:14px;padding:22px 22px 26px;margin-bottom:28px;position:relative;overflow:hidden;}

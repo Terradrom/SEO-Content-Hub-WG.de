@@ -8,6 +8,7 @@ import ManagerDashboard from "./ManagerDashboard";
 import TopicMap from "./TopicMap";
 import BonusArcade from "./BonusArcade";
 import CardModal from "./CardModal";
+import ScrollToTopButton from "./ScrollToTopButton";
 import { fetchItems, patchItem, getDataProvenance } from "../lib/data";
 import { supabaseBrowser } from "../lib/supabase-browser";
 
@@ -121,6 +122,7 @@ export default function AppShell({ user, profile }) {
       )}
 
       {openItem && <CardModal item={openItem} onClose={() => setOpenCardId(null)} onSave={saveCard} />}
+      <ScrollToTopButton />
     </div>
   );
 }
