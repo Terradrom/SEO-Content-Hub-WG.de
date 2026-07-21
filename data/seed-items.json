@@ -322,10 +322,17 @@
     "pageLink": "N/A",
     "importance": "High",
     "deadline": "2026-07-15",
-    "contentStatus": "Not Started",
-    "uploadStatus": "",
+    "contentStatus": "Ready for Upload",
+    "uploadStatus": "Queued",
     "uploadIssues": "",
-    "files": [],
+    "files": [
+      {
+        "name": "Google Doc",
+        "size": "link",
+        "addedAt": "2026-07-15",
+        "url": "https://docs.google.com/document/d/1-OaaWOeOqBu3pAUdlh2dQMxadvbvvYFzv-iIXr3uYF0/edit?usp=drivesdk"
+      }
+    ],
     "mobile": false,
     "translated": false,
     "indexed": false
@@ -1686,10 +1693,17 @@
     "pageLink": "https://werbegeschenk.eu/wireless-charging-desk-pad/003103149913/",
     "importance": "High",
     "deadline": "2026-07-15",
-    "contentStatus": "Not Started",
-    "uploadStatus": "",
+    "contentStatus": "Ready for Upload",
+    "uploadStatus": "Queued",
     "uploadIssues": "",
-    "files": [],
+    "files": [
+      {
+        "name": "Google Doc",
+        "size": "link",
+        "addedAt": "2026-07-15",
+        "url": "https://docs.google.com/document/d/1-xBXsAI8JLRQWA4iS0VWK7IJaG6eR8JvFBn_v4YoZXI/edit?usp=drivesdk"
+      }
+    ],
     "mobile": false,
     "translated": false,
     "indexed": false
