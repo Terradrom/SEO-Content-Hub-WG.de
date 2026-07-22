@@ -69,5 +69,5 @@ async function handle(request) {
   }
 </body></html>`;
 
-  return new NextResponse(html, { status: 200, headers: { "Content-Type": "text/html" } });
+  return new NextResponse(html, { status: 200, headers: { "Content-Type": "text/html; charset=utf-8" } });
 }
