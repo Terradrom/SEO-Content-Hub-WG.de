@@ -7,6 +7,18 @@ import { oauthClient } from "../../../../../lib/google-drive";
 export const dynamic = "force-dynamic";
 
 export async function GET(request) {
+  try {
+    return await handle(request);
+  } catch (err) {
+    // Surface the real error instead of a generic 500 — this route is
+    // manager-gated already, so showing the detail here is safe and is
+    // the only way to debug an OAuth failure without Vercel log access.
+    const detail = err?.response?.data ? JSON.stringify(err.response.data) : err?.message || String(err);
+    return new NextResponse(`Drive connect failed: ${detail}`, { status: 500 });
+  }
+}
+
+async function handle(request) {
   const { user, profile } = await getSessionProfile();
   if (!user || profile?.role !== "manager") {
     return NextResponse.json({ error: "manager only" }, { status: 403 });
