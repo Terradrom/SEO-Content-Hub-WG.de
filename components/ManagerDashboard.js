@@ -228,6 +228,17 @@ export default function ManagerDashboard({ items }) {
 
       <h3 style={{ ...sectionTitle, marginTop: "20px" }}>Notifications</h3>
       <NotificationPauses />
+
+      <h3 style={{ ...sectionTitle, marginTop: "20px" }}>Files</h3>
+      <div className="upload-gate" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+        <span>
+          Download every uploaded document as one zip — files also live permanently in Supabase Storage, browsable
+          from the Supabase dashboard any time.
+        </span>
+        <a className="mini-btn" href="/api/files/export">
+          download all files (.zip)
+        </a>
+      </div>
     </>
   );
 }

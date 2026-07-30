@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../../../lib/supabase-server";
 import { getSessionProfile } from "../../../../../../lib/supabase-ssr-server";
+import { deleteFromStorage } from "../../../../../../lib/supabase-storage";
 import { deleteFileFromDrive } from "../../../../../../lib/google-drive";
 
 export const dynamic = "force-dynamic";
@@ -24,10 +25,15 @@ export async function DELETE(request, { params }) {
   }
 
   try {
-    await deleteFileFromDrive(fileRow.drive_file_id);
+    if (fileRow.storage_path) {
+      await deleteFromStorage(fileRow.storage_path);
+    } else if (fileRow.drive_file_id) {
+      // Legacy row from before the Drive -> Supabase Storage switch.
+      await deleteFileFromDrive(fileRow.drive_file_id);
+    }
   } catch (err) {
-    // Drive-side delete failing shouldn't block removing the record — log and continue.
-    console.error("Drive delete failed:", err.message);
+    // Storage/Drive-side delete failing shouldn't block removing the record — log and continue.
+    console.error("File delete failed:", err.message);
   }
 
   const { error } = await supabase.from("item_files").delete().eq("id", params.fileId);

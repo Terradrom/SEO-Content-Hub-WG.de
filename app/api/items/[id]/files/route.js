@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../../lib/supabase-server";
 import { getSessionProfile } from "../../../../../lib/supabase-ssr-server";
-import { uploadFileToDrive } from "../../../../../lib/google-drive";
+import { uploadToStorage } from "../../../../../lib/supabase-storage";
 
 export const dynamic = "force-dynamic";
 
@@ -22,9 +22,9 @@ export async function POST(request, { params }) {
 
   let uploaded;
   try {
-    uploaded = await uploadFileToDrive(file, item?.type);
+    uploaded = await uploadToStorage(file, item?.type);
   } catch (err) {
-    return NextResponse.json({ error: `Drive upload failed: ${err.message}` }, { status: 502 });
+    return NextResponse.json({ error: err.message }, { status: 502 });
   }
 
   const sizeLabel = Math.round(file.size / 1024) + " KB";
@@ -33,8 +33,8 @@ export async function POST(request, { params }) {
     .insert({
       item_id: params.id,
       name: uploaded.name,
-      drive_file_id: uploaded.driveFileId,
-      web_view_link: uploaded.webViewLink,
+      storage_path: uploaded.storagePath,
+      web_view_link: uploaded.publicUrl,
       size_label: sizeLabel,
     })
     .select()
