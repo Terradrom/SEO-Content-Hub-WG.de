@@ -13,16 +13,26 @@ const USERS = [
   { email: "ashveenaanne@gmail.com", role: "content", name: "Ashveena" },
   { email: "michelle.bridget@gmail.com", role: "content", name: "Michelle" },
   { email: "adam.kondrollochis@gmail.com", role: "upload", name: "Adam" },
+  { email: "potatozoe02@gmail.com", role: "media", name: "Zoe", simplePassword: true },
 ];
 
 function tempPassword() {
   return randomBytes(9).toString("base64url"); // ~12 chars, URL-safe
 }
 
+// Easier to read/type/say out loud than the base64url passwords above,
+// while still reasonably resistant to guessing.
+const WORDS = ["Cedar", "Harbor", "Meadow", "Quartz", "Sable", "Willow", "Ember", "Falcon"];
+function simplePassword() {
+  const word = WORDS[Math.floor(Math.random() * WORDS.length)];
+  const digits = Math.floor(1000 + Math.random() * 9000);
+  return `${word}${digits}`;
+}
+
 async function main() {
   const results = [];
   for (const u of USERS) {
-    const password = tempPassword();
+    const password = u.simplePassword ? simplePassword() : tempPassword();
     const { data, error } = await supabase.auth.admin.createUser({
       email: u.email,
       password,
