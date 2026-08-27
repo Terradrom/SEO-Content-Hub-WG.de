@@ -2,6 +2,7 @@
 import { useRef, useState } from "react";
 import { copyText } from "../lib/format";
 import { CONTENT_STATUSES, UPLOAD_STATUSES, MEDIA_STATUSES } from "../lib/data";
+import { supabaseBrowser } from "../lib/supabase-browser";
 
 export default function CardModal({ item, onClose, onSave, profile }) {
   const [form, setForm] = useState({ ...item, files: item.files || [], mediaFiles: item.mediaFiles || [] });
@@ -26,16 +27,43 @@ export default function CardModal({ item, onClose, onSave, profile }) {
     setForm((f) => ({ ...f, ...fields }));
   }
 
+  // Three steps so the actual file bytes never pass through our Vercel API
+  // route (capped at ~4.5MB there) — sign gets a one-time upload URL,
+  // uploadToSignedUrl sends the file straight to Supabase Storage from the
+  // browser, confirm records the item_files row once that succeeds.
   async function uploadFile(file, category) {
-    const body = new FormData();
-    body.append("file", file);
-    body.append("category", category);
-    const res = await fetch(`/api/items/${item.id}/files`, { method: "POST", body });
-    if (!res.ok) {
-      const { error } = await res.json().catch(() => ({}));
-      throw new Error(error || "upload failed");
+    const signRes = await fetch(`/api/items/${item.id}/files/sign`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ fileName: file.name }),
+    });
+    if (!signRes.ok) {
+      const { error } = await signRes.json().catch(() => ({}));
+      throw new Error(error || "couldn't prepare upload");
     }
-    return res.json();
+    const { path, token, publicUrl } = await signRes.json();
+
+    const { error: uploadError } = await supabaseBrowser()
+      .storage.from("item-files")
+      .uploadToSignedUrl(path, token, file);
+    if (uploadError) throw new Error(uploadError.message || "upload failed");
+
+    const confirmRes = await fetch(`/api/items/${item.id}/files/confirm`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        name: file.name,
+        path,
+        publicUrl,
+        size: Math.round(file.size / 1024) + " KB",
+        category,
+      }),
+    });
+    if (!confirmRes.ok) {
+      const { error } = await confirmRes.json().catch(() => ({}));
+      throw new Error(error || "upload saved but couldn't be recorded");
+    }
+    return confirmRes.json();
   }
 
   async function addFile(file) {
