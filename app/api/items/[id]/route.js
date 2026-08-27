@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../lib/supabase-server";
 import { getSessionProfile } from "../../../../lib/supabase-ssr-server";
-import { rowToItem, itemPatchToRow, fieldsAllowedForRole } from "../../../../lib/items-map";
+import { rowToItem, itemPatchToRow, fieldsAllowedForRole, applyHandoffs } from "../../../../lib/items-map";
 
 export const dynamic = "force-dynamic";
 
@@ -26,15 +26,12 @@ export async function PATCH(request, { params }) {
 
   const supabase = supabaseAdmin();
 
-  // Handoff side effect: moving a card to "Ready for Upload" queues it for
-  // the upload team automatically. This has to happen server-side (not as
-  // a client-sent field) since a content-role request isn't allowed to set
-  // upload_status directly.
-  if (row.content_status === "Ready for Upload") {
-    const { data: current } = await supabase.from("items").select("upload_status").eq("id", params.id).single();
-    if (current && !current.upload_status) {
-      row.upload_status = "Queued";
-    }
+  // Cross-team handoffs (content -> upload -> media -> upload) need the
+  // row's pre-patch state and have to happen server-side, since no single
+  // role is allowed to set another team's status field directly.
+  if ("content_status" in row || "upload_status" in row || "media_status" in row) {
+    const { data: current } = await supabase.from("items").select("upload_status, media_status").eq("id", params.id).single();
+    applyHandoffs(row, current);
   }
 
   const { data, error } = await supabase

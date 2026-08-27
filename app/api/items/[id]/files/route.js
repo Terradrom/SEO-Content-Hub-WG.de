@@ -16,6 +16,7 @@ export async function POST(request, { params }) {
   if (!file || typeof file === "string") {
     return NextResponse.json({ error: "no file in request" }, { status: 400 });
   }
+  const category = formData.get("category") === "media" ? "media" : "document";
 
   const supabase = supabaseAdmin();
   const { data: item } = await supabase.from("items").select("type").eq("id", params.id).single();
@@ -36,6 +37,7 @@ export async function POST(request, { params }) {
       storage_path: uploaded.storagePath,
       web_view_link: uploaded.publicUrl,
       size_label: sizeLabel,
+      category,
     })
     .select()
     .single();
@@ -50,5 +52,6 @@ export async function POST(request, { params }) {
     size: data.size_label,
     addedAt: data.added_at,
     url: data.web_view_link,
+    category: data.category,
   });
 }

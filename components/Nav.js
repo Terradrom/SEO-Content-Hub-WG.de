@@ -3,9 +3,10 @@
 const TABS = [
   { id: "content", label: "Content Team", roles: ["content", "manager"] },
   { id: "upload", label: "Upload Team", roles: ["upload", "manager"] },
+  { id: "media", label: "Media Team", roles: ["media", "manager"] },
   { id: "manager", label: "Manager", roles: ["manager"] },
-  { id: "map", label: "Topic Map", roles: ["content", "upload", "manager"] },
-  { id: "bonus", label: "Bonus Arcade", roles: ["content", "upload", "manager"] },
+  { id: "map", label: "Topic Map", roles: ["content", "upload", "media", "manager"] },
+  { id: "bonus", label: "Bonus Arcade", roles: ["content", "upload", "media", "manager"] },
 ];
 
 export default function Nav({ view, setView, role }) {

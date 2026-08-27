@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import Nav from "./Nav";
 import ContentBoard from "./ContentBoard";
 import UploadBoard from "./UploadBoard";
+import MediaBoard from "./MediaBoard";
 import ManagerDashboard from "./ManagerDashboard";
 import TopicMap from "./TopicMap";
 import BonusArcade from "./BonusArcade";
@@ -12,7 +13,7 @@ import ScrollToTopButton from "./ScrollToTopButton";
 import { fetchItems, patchItem, getDataProvenance } from "../lib/data";
 import { supabaseBrowser } from "../lib/supabase-browser";
 
-const DEFAULT_VIEW_BY_ROLE = { content: "content", upload: "upload", manager: "content" };
+const DEFAULT_VIEW_BY_ROLE = { content: "content", upload: "upload", media: "media", manager: "content" };
 
 export default function AppShell({ user, profile }) {
   const router = useRouter();
@@ -40,16 +41,16 @@ export default function AppShell({ user, profile }) {
   const provenance = getDataProvenance();
 
   async function moveItem(id, newStatus, field) {
-    // field is "contentStatus" on the content board, "uploadStatus" on the upload board
+    // field is "contentStatus" / "uploadStatus" / "mediaStatus" depending on board
     const current = items.find((it) => it.id === id);
     if (!current) return;
-    const patch = { [field]: newStatus };
-    if (field === "contentStatus" && newStatus === "Ready for Upload" && !current.uploadStatus) {
-      patch.uploadStatus = "Queued";
-    }
-    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...patch } : it)));
+    setItems((prev) => prev.map((it) => (it.id === id ? { ...it, [field]: newStatus } : it)));
     try {
-      await patchItem(id, patch);
+      // The server may apply further handoffs (e.g. auto-queueing for the
+      // next team) beyond the single field we sent — use its real
+      // response as the new source of truth instead of our local guess.
+      const updated = await patchItem(id, { [field]: newStatus });
+      setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...updated } : it)));
     } catch (err) {
       setItems((prev) => prev.map((it) => (it.id === id ? current : it))); // revert on failure
     }
@@ -59,7 +60,8 @@ export default function AppShell({ user, profile }) {
     const prevItems = items;
     setItems((prev) => prev.map((it) => (it.id === next.id ? { ...it, ...next } : it)));
     try {
-      await patchItem(next.id, next);
+      const updated = await patchItem(next.id, next);
+      setItems((prev) => prev.map((it) => (it.id === next.id ? { ...it, ...updated } : it)));
     } catch (err) {
       setItems(prevItems); // revert on failure
       throw err;
@@ -115,13 +117,20 @@ export default function AppShell({ user, profile }) {
               onMove={(id, status) => moveItem(id, status, "uploadStatus")}
             />
           )}
+          {view === "media" && (
+            <MediaBoard
+              items={items}
+              onOpenCard={setOpenCardId}
+              onMove={(id, status) => moveItem(id, status, "mediaStatus")}
+            />
+          )}
           {view === "manager" && <ManagerDashboard items={items} />}
           {view === "map" && <TopicMap />}
           {view === "bonus" && <BonusArcade role={role} items={items} />}
         </>
       )}
 
-      {openItem && <CardModal item={openItem} onClose={() => setOpenCardId(null)} onSave={saveCard} />}
+      {openItem && <CardModal item={openItem} onClose={() => setOpenCardId(null)} onSave={saveCard} profile={profile} />}
       <ScrollToTopButton />
     </div>
   );

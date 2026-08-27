@@ -1,35 +1,48 @@
 "use client";
 import { useRef, useState } from "react";
 import { copyText } from "../lib/format";
-import { CONTENT_STATUSES, UPLOAD_STATUSES } from "../lib/data";
+import { CONTENT_STATUSES, UPLOAD_STATUSES, MEDIA_STATUSES } from "../lib/data";
 
-export default function CardModal({ item, onClose, onSave }) {
-  const [form, setForm] = useState({ ...item });
+export default function CardModal({ item, onClose, onSave, profile }) {
+  const [form, setForm] = useState({ ...item, files: item.files || [], mediaFiles: item.mediaFiles || [] });
   const [dragging, setDragging] = useState(false);
+  const [mediaDragging, setMediaDragging] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
   const [copiedField, setCopiedField] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [mediaUploading, setMediaUploading] = useState(false);
   const [fileError, setFileError] = useState("");
+  const [mediaFileError, setMediaFileError] = useState("");
   const fileInputRef = useRef(null);
+  const mediaInputRef = useRef(null);
 
   if (!item) return null;
 
+  const isMediaViewer = profile?.role === "media";
+  const showMediaSection = !isMediaViewer && !!form.mediaStatus;
+  const showPageLink = form.type !== "Glossaries";
+
   function patch(fields) {
     setForm((f) => ({ ...f, ...fields }));
+  }
+
+  async function uploadFile(file, category) {
+    const body = new FormData();
+    body.append("file", file);
+    body.append("category", category);
+    const res = await fetch(`/api/items/${item.id}/files`, { method: "POST", body });
+    if (!res.ok) {
+      const { error } = await res.json().catch(() => ({}));
+      throw new Error(error || "upload failed");
+    }
+    return res.json();
   }
 
   async function addFile(file) {
     setFileError("");
     setUploading(true);
     try {
-      const body = new FormData();
-      body.append("file", file);
-      const res = await fetch(`/api/items/${item.id}/files`, { method: "POST", body });
-      if (!res.ok) {
-        const { error } = await res.json().catch(() => ({}));
-        throw new Error(error || "upload failed");
-      }
-      const uploaded = await res.json();
+      const uploaded = await uploadFile(file, "document");
       patch({ files: [...form.files, uploaded] });
     } catch (err) {
       setFileError(err.message);
@@ -38,9 +51,33 @@ export default function CardModal({ item, onClose, onSave }) {
     }
   }
 
+  async function addMediaFiles(fileList) {
+    setMediaFileError("");
+    setMediaUploading(true);
+    try {
+      const uploadedList = [];
+      for (const file of fileList) {
+        uploadedList.push(await uploadFile(file, "media"));
+      }
+      patch({ mediaFiles: [...form.mediaFiles, ...uploadedList] });
+    } catch (err) {
+      setMediaFileError(err.message);
+    } finally {
+      setMediaUploading(false);
+    }
+  }
+
   async function removeFile(idx) {
     const target = form.files[idx];
     patch({ files: form.files.filter((_, i) => i !== idx) });
+    if (target?.id) {
+      await fetch(`/api/items/${item.id}/files/${target.id}`, { method: "DELETE" }).catch(() => {});
+    }
+  }
+
+  async function removeMediaFile(idx) {
+    const target = form.mediaFiles[idx];
+    patch({ mediaFiles: form.mediaFiles.filter((_, i) => i !== idx) });
     if (target?.id) {
       await fetch(`/api/items/${item.id}/files/${target.id}`, { method: "DELETE" }).catch(() => {});
     }
@@ -54,10 +91,116 @@ export default function CardModal({ item, onClose, onSave }) {
 
   async function handleSave() {
     setSaveMsg("saving…");
-    const next = { ...form };
-    if (next.contentStatus === "Ready for Upload" && !next.uploadStatus) next.uploadStatus = "Queued";
-    await onSave(next);
+    await onSave(form);
     setSaveMsg("saved ✓");
+  }
+
+  function mediaFilesSection(dropzoneLabel) {
+    return (
+      <>
+        <label className="section-label">Media images</label>
+        <div
+          className={`dropzone ${mediaDragging ? "drag" : ""}`}
+          onClick={() => !mediaUploading && mediaInputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setMediaDragging(true);
+          }}
+          onDragLeave={() => setMediaDragging(false)}
+          onDrop={(e) => {
+            e.preventDefault();
+            setMediaDragging(false);
+            if (e.dataTransfer.files.length && !mediaUploading) addMediaFiles([...e.dataTransfer.files]);
+          }}
+        >
+          {mediaUploading ? (
+            <strong>Uploading…</strong>
+          ) : (
+            <>
+              <strong>Drop images here</strong> or click to attach
+              <br />
+              {dropzoneLabel || "multiple images allowed"}
+            </>
+          )}
+          <input
+            ref={mediaInputRef}
+            type="file"
+            accept="image/*"
+            multiple
+            style={{ display: "none" }}
+            onChange={(e) => e.target.files.length && addMediaFiles([...e.target.files])}
+          />
+        </div>
+        {mediaFileError && <div style={{ color: "var(--rust)" }}>{mediaFileError}</div>}
+        <div className="file-list">
+          {form.mediaFiles.map((f, idx) => (
+            <div className="file-item" key={f.id || idx}>
+              <span className="fname">
+                🖼️{" "}
+                {f.url ? (
+                  <a href={f.url} target="_blank" rel="noreferrer">
+                    {f.name}
+                  </a>
+                ) : (
+                  f.name
+                )}{" "}
+                <span style={{ color: "var(--muted)" }}>· {f.size}</span>
+              </span>
+              <button onClick={() => removeMediaFile(idx)}>remove</button>
+            </div>
+          ))}
+        </div>
+      </>
+    );
+  }
+
+  // ── Media team gets a deliberately stripped-down view: the page link
+  // (skipped for Glossaries, which don't have a clean one), their status
+  // column, and the image upload area — nothing else. ─────────────────────
+  if (isMediaViewer) {
+    return (
+      <div className="overlay" onClick={onClose}>
+        <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal-head">
+            <h2>{form.topic}</h2>
+            <button className="close-x" onClick={onClose}>
+              ✕
+            </button>
+          </div>
+          <div className="sub">{form.type}</div>
+
+          {showPageLink && (
+            <div className="info-row">
+              <span className="il">Page URL</span>
+              <span className="iv">{form.pageLink || "—"}</span>
+              <button className="copy-btn" onClick={() => handleCopy("url", form.pageLink)}>
+                {copiedField === "url" ? "copied ✓" : "copy"}
+              </button>
+            </div>
+          )}
+
+          <div className="field-row">
+            <div className="field">
+              <label>Media status</label>
+              <select value={form.mediaStatus || ""} onChange={(e) => patch({ mediaStatus: e.target.value })}>
+                {MEDIA_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {mediaFilesSection()}
+
+          <button className="save-note-btn" onClick={handleSave}>
+            Save changes
+          </button>
+          <div className="status-msg">{saveMsg}</div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -156,6 +299,42 @@ export default function CardModal({ item, onClose, onSave }) {
           </div>
         )}
 
+        {showMediaSection && (
+          <>
+            <label className="section-label">Media team{form.mediaStatus === "Ready for upload" ? " — done, awaiting re-upload" : ""}</label>
+            <div className="field-row">
+              <div className="field">
+                <select value={form.mediaStatus} onChange={(e) => patch({ mediaStatus: e.target.value })} disabled={profile?.role !== "manager"}>
+                  {MEDIA_STATUSES.map((s) => (
+                    <option key={s} value={s}>
+                      {s}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            {profile?.role !== "manager" && form.mediaFiles.length > 0 && (
+              <div className="file-list">
+                {form.mediaFiles.map((f, idx) => (
+                  <div className="file-item" key={f.id || idx}>
+                    <span className="fname">
+                      🖼️{" "}
+                      {f.url ? (
+                        <a href={f.url} target="_blank" rel="noreferrer">
+                          {f.name}
+                        </a>
+                      ) : (
+                        f.name
+                      )}{" "}
+                      <span style={{ color: "var(--muted)" }}>· {f.size}</span>
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
+
         <label className="section-label">Document</label>
         <div
           className={`dropzone ${dragging ? "drag" : ""}`}
@@ -172,12 +351,12 @@ export default function CardModal({ item, onClose, onSave }) {
           }}
         >
           {uploading ? (
-            <strong>Uploading to Drive…</strong>
+            <strong>Uploading…</strong>
           ) : (
             <>
               <strong>Drop a file here</strong> or click to attach
               <br />
-              pushes straight into the shared Drive folder
+              pushes straight into shared storage
             </>
           )}
           <input
@@ -206,6 +385,8 @@ export default function CardModal({ item, onClose, onSave }) {
             </div>
           ))}
         </div>
+
+        {profile?.role === "manager" && mediaFilesSection("manager can also add media images here")}
 
         <button className="save-note-btn" onClick={handleSave}>
           Save changes

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { derivePeople } from "../lib/data";
+import { derivePeople, MEDIA_STATUSES } from "../lib/data";
 import { daysUntil, fmtDate } from "../lib/format";
 
 function nextDeadlineFor(items, person) {
@@ -198,6 +198,21 @@ export default function ManagerDashboard({ items }) {
             </div>
             <div className="bar-track">
               <div className="bar-fill" style={{ width: "100%", background: s.color }} />
+            </div>
+          </div>
+        ))}
+      </section>
+
+      <h3 style={{ ...sectionTitle, marginTop: "20px" }}>Media team — pipeline</h3>
+      <section className="dash">
+        {MEDIA_STATUSES.map((label, i) => (
+          <div className="dash-card" key={label}>
+            <div className="who">
+              <span>{label}</span>
+              <span>{items.filter((it) => it.mediaStatus === label).length}</span>
+            </div>
+            <div className="bar-track">
+              <div className="bar-fill" style={{ width: "100%", background: "var(--pink)" }} />
             </div>
           </div>
         ))}

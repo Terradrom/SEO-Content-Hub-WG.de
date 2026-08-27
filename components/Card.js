@@ -4,10 +4,12 @@ import { daysUntil, fmtDate } from "../lib/format";
 export default function Card({ item, onOpen, onDragStart }) {
   const d = daysUntil(item.deadline);
   const overdue = d < 0 && item.contentStatus !== "Ready for Upload";
+  const mediaReady = item.mediaStatus === "Ready for upload";
 
   return (
     <div
-      className="card"
+      className={`card ${mediaReady ? "card-media-ready" : ""}`}
+      title={mediaReady ? "Media team finished — ready to re-publish with new media" : undefined}
       draggable
       onDragStart={(e) => {
         e.dataTransfer.setData("text/plain", item.id);
