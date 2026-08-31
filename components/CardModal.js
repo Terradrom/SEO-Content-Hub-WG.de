@@ -4,7 +4,7 @@ import { copyText } from "../lib/format";
 import { CONTENT_STATUSES, UPLOAD_STATUSES, MEDIA_STATUSES } from "../lib/data";
 import { supabaseBrowser } from "../lib/supabase-browser";
 
-export default function CardModal({ item, onClose, onSave, profile }) {
+export default function CardModal({ item, onClose, onSave, profile, roles, boardView }) {
   const [form, setForm] = useState({ ...item, files: item.files || [], mediaFiles: item.mediaFiles || [] });
   const [dragging, setDragging] = useState(false);
   const [mediaDragging, setMediaDragging] = useState(false);
@@ -14,12 +14,19 @@ export default function CardModal({ item, onClose, onSave, profile }) {
   const [mediaUploading, setMediaUploading] = useState(false);
   const [fileError, setFileError] = useState("");
   const [mediaFileError, setMediaFileError] = useState("");
+  const [assignMsg, setAssignMsg] = useState("");
   const fileInputRef = useRef(null);
   const mediaInputRef = useRef(null);
 
   if (!item) return null;
 
-  const isMediaViewer = profile?.role === "media";
+  const myRoles = roles || [];
+  const isManager = myRoles.includes("manager");
+  const canClaimUpload = myRoles.includes("upload") || isManager;
+  // Which view to render is about which board the card was opened from, not
+  // a fixed role — Zoe (media + upload) should see the simplified media
+  // view from the Media board and the full upload view from Upload's.
+  const isMediaViewer = boardView === "media";
   const showMediaSection = !isMediaViewer && !!form.mediaStatus;
   const showPageLink = form.type !== "Glossaries";
 
@@ -123,6 +130,21 @@ export default function CardModal({ item, onClose, onSave, profile }) {
     setSaveMsg("saved ✓");
   }
 
+  // Claiming saves immediately rather than waiting for "Save changes" —
+  // the whole point is avoiding a mixup where two people grab the same
+  // card, so the claim should land the moment it's clicked.
+  async function setUploader(name) {
+    setAssignMsg("saving…");
+    const next = { ...form, uploader: name };
+    setForm(next);
+    try {
+      await onSave(next);
+      setAssignMsg("");
+    } catch {
+      setAssignMsg("couldn't save — try again");
+    }
+  }
+
   function mediaFilesSection(dropzoneLabel) {
     return (
       <>
@@ -179,6 +201,32 @@ export default function CardModal({ item, onClose, onSave, profile }) {
           ))}
         </div>
       </>
+    );
+  }
+
+  function claimRow() {
+    const me = profile?.display_name;
+    const assignedToMe = form.uploader && me && form.uploader === me;
+    return (
+      <div className="claim-row">
+        <span className="hint">{form.uploader ? `Working on it: ${form.uploader}` : "Unclaimed"}</span>
+        {canClaimUpload && !form.uploader && me && (
+          <button className="mini-btn" onClick={() => setUploader(me)}>
+            assign to me
+          </button>
+        )}
+        {canClaimUpload && assignedToMe && (
+          <button className="mini-btn" onClick={() => setUploader(null)}>
+            unassign
+          </button>
+        )}
+        {canClaimUpload && form.uploader && !assignedToMe && isManager && (
+          <button className="mini-btn" onClick={() => setUploader(me)}>
+            reassign to me
+          </button>
+        )}
+        {assignMsg && <span className="hint">{assignMsg}</span>}
+      </div>
     );
   }
 
@@ -288,6 +336,8 @@ export default function CardModal({ item, onClose, onSave, profile }) {
 
         {form.contentStatus === "Ready for Upload" ? (
           <>
+            <label className="section-label">Who&apos;s on it</label>
+            {claimRow()}
             <div className="field-row">
               <div className="field">
                 <label>Upload status</label>
@@ -332,7 +382,11 @@ export default function CardModal({ item, onClose, onSave, profile }) {
             <label className="section-label">Media team{form.mediaStatus === "Ready for upload" ? " — done, awaiting re-upload" : ""}</label>
             <div className="field-row">
               <div className="field">
-                <select value={form.mediaStatus} onChange={(e) => patch({ mediaStatus: e.target.value })} disabled={profile?.role !== "manager"}>
+                <select
+                  value={form.mediaStatus}
+                  onChange={(e) => patch({ mediaStatus: e.target.value })}
+                  disabled={!(isManager || myRoles.includes("media"))}
+                >
                   {MEDIA_STATUSES.map((s) => (
                     <option key={s} value={s}>
                       {s}
@@ -341,7 +395,7 @@ export default function CardModal({ item, onClose, onSave, profile }) {
                 </select>
               </div>
             </div>
-            {profile?.role !== "manager" && form.mediaFiles.length > 0 && (
+            {!isManager && form.mediaFiles.length > 0 && (
               <div className="file-list">
                 {form.mediaFiles.map((f, idx) => (
                   <div className="file-item" key={f.id || idx}>
@@ -414,7 +468,7 @@ export default function CardModal({ item, onClose, onSave, profile }) {
           ))}
         </div>
 
-        {profile?.role === "manager" && mediaFilesSection("manager can also add media images here")}
+        {isManager && mediaFilesSection("manager can also add media images here")}
 
         <button className="save-note-btn" onClick={handleSave}>
           Save changes

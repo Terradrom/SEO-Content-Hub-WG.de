@@ -18,6 +18,7 @@ const DEFAULT_VIEW_BY_ROLE = { content: "content", upload: "upload", media: "med
 export default function AppShell({ user, profile }) {
   const router = useRouter();
   const role = profile?.role || null;
+  const roles = profile?.roles?.length ? profile.roles : role ? [role] : [];
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
@@ -86,7 +87,7 @@ export default function AppShell({ user, profile }) {
           )}
           <div className="account-bar">
             <span className="hint">
-              {user?.email} {role ? `· ${role}` : "· no role assigned yet — ask your manager"}
+              {user?.email} {roles.length ? `· ${roles.join(" + ")}` : "· no role assigned yet — ask your manager"}
             </span>
             <button className="signout-btn" onClick={signOut}>
               Sign out
@@ -95,7 +96,7 @@ export default function AppShell({ user, profile }) {
         </div>
       </header>
 
-      <Nav view={view} setView={setView} role={role} />
+      <Nav view={view} setView={setView} roles={roles} />
 
       {loading && <p className="note">Loading items…</p>}
       {loadError && <p className="note" style={{ color: "var(--rust)" }}>Couldn&apos;t load items: {loadError}</p>}
@@ -130,7 +131,16 @@ export default function AppShell({ user, profile }) {
         </>
       )}
 
-      {openItem && <CardModal item={openItem} onClose={() => setOpenCardId(null)} onSave={saveCard} profile={profile} />}
+      {openItem && (
+        <CardModal
+          item={openItem}
+          onClose={() => setOpenCardId(null)}
+          onSave={saveCard}
+          profile={profile}
+          roles={roles}
+          boardView={view}
+        />
+      )}
       <ScrollToTopButton />
     </div>
   );

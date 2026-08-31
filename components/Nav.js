@@ -9,8 +9,9 @@ const TABS = [
   { id: "bonus", label: "Bonus Arcade", roles: ["content", "upload", "media", "manager"] },
 ];
 
-export default function Nav({ view, setView, role }) {
-  const tabs = TABS.filter((t) => t.roles.includes(role));
+export default function Nav({ view, setView, roles }) {
+  const myRoles = roles || [];
+  const tabs = TABS.filter((t) => t.roles.some((r) => myRoles.includes(r)));
   return (
     <nav className="nav">
       {tabs.map((t) => (

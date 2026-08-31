@@ -98,7 +98,7 @@ function NotificationPauses() {
                 <option value="">select…</option>
                 {profiles.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.display_name || p.email} ({p.role})
+                    {p.display_name || p.email} ({(p.roles?.length ? p.roles : [p.role]).join(" + ")})
                   </option>
                 ))}
               </select>

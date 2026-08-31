@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { supabaseAdmin } from "../../../../lib/supabase-server";
 import { getSessionProfile } from "../../../../lib/supabase-ssr-server";
-import { rowToItem, itemPatchToRow, fieldsAllowedForRole, applyHandoffs } from "../../../../lib/items-map";
+import { rowToItem, itemPatchToRow, fieldsAllowedForRoles, applyHandoffs } from "../../../../lib/items-map";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ export async function PATCH(request, { params }) {
   }
 
   const patch = await request.json();
-  const allowed = fieldsAllowedForRole(profile.role);
+  const allowed = fieldsAllowedForRoles(profile.roles);
 
   const filteredPatch = {};
   for (const key of Object.keys(patch)) {

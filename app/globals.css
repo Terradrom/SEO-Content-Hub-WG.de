@@ -115,6 +115,7 @@ select:focus{outline:2px solid var(--accent);outline-offset:1px;}
 .card .kw-line{font-size:10.5px;color:var(--muted);font-family:'IBM Plex Mono',monospace;margin-bottom:8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .card .foot{display:flex;justify-content:space-between;align-items:center;font-size:11px;color:var(--muted);}
 .card .who-chip{font-family:'IBM Plex Mono',monospace;font-size:10px;background:var(--ink);padding:2px 7px;border-radius:99px;border:1px solid var(--line-strong);}
+.card .who-chip-uploader{color:var(--cyan);border-color:rgba(62,232,200,.4);}
 .card .deadline.overdue{color:var(--rust);font-weight:600;}
 .card .file-flag{position:absolute;top:10px;right:10px;width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent);}
 .card .issue-flag{position:absolute;top:10px;right:20px;width:6px;height:6px;border-radius:50%;background:var(--rust);box-shadow:0 0 6px var(--rust);}
@@ -217,6 +218,7 @@ section.panel::before{content:'';position:absolute;top:-40%;right:-15%;width:60%
 .sim-btn:hover{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 1px rgba(0,224,138,0.2);}
 .sim-btn.reset{color:var(--muted);}
 
+.claim-row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;background:var(--ink-3);border:1px solid var(--line);border-radius:9px;padding:9px 12px;margin-bottom:14px;}
 .manager-gate{display:flex;gap:8px;align-items:center;margin-bottom:16px;flex-wrap:wrap;background:var(--ink-3);border:1px solid var(--line);border-radius:9px;padding:10px 12px;}
 .manager-gate input{background:var(--ink);color:var(--paper);border:1px solid var(--line-strong);border-radius:6px;padding:7px 10px;font-size:12.5px;font-family:'IBM Plex Mono',monospace;width:110px;}
 .manager-gate button{font-family:'Inter';font-size:12px;font-weight:600;background:var(--grad-accent);color:var(--ink);border:none;border-radius:6px;padding:8px 14px;cursor:pointer;}

@@ -26,7 +26,10 @@ export default function Card({ item, onOpen, onDragStart }) {
       <h4>{item.topic}</h4>
       <div className="kw-line">{(item.keywords || "").split(",").slice(0, 3).join(", ")}</div>
       <div className="foot">
-        <span className="who-chip">{item.person}</span>
+        <span style={{ display: "flex", gap: 5, alignItems: "center", flexWrap: "wrap" }}>
+          <span className="who-chip">{item.person}</span>
+          {item.uploader && <span className="who-chip who-chip-uploader">🔧 {item.uploader}</span>}
+        </span>
         <span className={`deadline ${overdue ? "overdue" : ""}`}>
           {overdue ? "⚠ " : ""}
           {fmtDate(item.deadline)}
