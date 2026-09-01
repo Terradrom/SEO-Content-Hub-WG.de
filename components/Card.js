@@ -5,6 +5,13 @@ export default function Card({ item, onOpen, onDragStart }) {
   const d = daysUntil(item.deadline);
   const overdue = d < 0 && item.contentStatus !== "Ready for Upload";
   const mediaReady = item.mediaStatus === "Ready for upload";
+  // Once media_status hits "Done" the full loop (Live -> media team ->
+  // back to Upload -> Live again) is finished — text and images are both
+  // published. Without a marker this looks identical to a first-time
+  // Live item, which is exactly the confusion this badge is for.
+  const fullyDone = item.uploadStatus === "Live" && item.mediaStatus === "Done";
+  const mediaInProgress =
+    item.uploadStatus === "Live" && item.mediaStatus && !["Done", "Ready for upload"].includes(item.mediaStatus);
 
   return (
     <div
@@ -23,6 +30,8 @@ export default function Card({ item, onOpen, onDragStart }) {
         <span className="type-tag">{item.type}</span>
         <span className={`stamp imp-${item.importance}`}>{item.importance}</span>
       </div>
+      {fullyDone && <div className="done-badge">✅ Text + media live — fully done</div>}
+      {mediaInProgress && <div className="progress-badge">🎨 Media in progress ({item.mediaStatus})</div>}
       <h4>{item.topic}</h4>
       <div className="kw-line">{(item.keywords || "").split(",").slice(0, 3).join(", ")}</div>
       <div className="foot">

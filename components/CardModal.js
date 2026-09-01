@@ -29,6 +29,9 @@ export default function CardModal({ item, onClose, onSave, profile, roles, board
   const isMediaViewer = boardView === "media";
   const showMediaSection = !isMediaViewer && !!form.mediaStatus;
   const showPageLink = form.type !== "Glossaries";
+  const fullyDone = form.uploadStatus === "Live" && form.mediaStatus === "Done";
+  const mediaInProgress =
+    form.uploadStatus === "Live" && form.mediaStatus && !["Done", "Ready for upload"].includes(form.mediaStatus);
 
   function patch(fields) {
     setForm((f) => ({ ...f, ...fields }));
@@ -291,6 +294,13 @@ export default function CardModal({ item, onClose, onSave, profile, roles, board
         <div className="sub">
           {form.type} · assigned to {form.person}
         </div>
+
+        {fullyDone && <div className="done-badge" style={{ marginBottom: 12 }}>✅ Text + media live — fully done, no action needed</div>}
+        {mediaInProgress && (
+          <div className="progress-badge" style={{ marginBottom: 12 }}>
+            🎨 Live, but media team still working on it ({form.mediaStatus})
+          </div>
+        )}
 
         <div className="info-row">
           <span className="il">Topic tree</span>
