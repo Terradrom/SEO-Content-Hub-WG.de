@@ -22,13 +22,13 @@ export async function GET(request) {
 
   const supabase = supabaseAdmin();
   const [{ data: itemRows }, { data: profiles }, { data: pauses }] = await Promise.all([
-    supabase.from("items").select("*, item_files(*)"),
+    supabase.from("items").select("*"),
     supabase.from("profiles").select("*"),
     supabase.from("notification_pauses").select("*"),
   ]);
 
   const items = (itemRows || []).map(rowToItem);
-  const { byPerson, uploadIssues, totalOverdue } = computeOverdueReport(items);
+  const { byPerson, totalOverdue } = computeOverdueReport(items);
 
   const profileByName = new Map((profiles || []).filter((p) => p.display_name).map((p) => [p.display_name, p]));
   const managers = (profiles || []).filter((p) => p.role === "manager" && p.email);
@@ -48,12 +48,11 @@ export async function GET(request) {
   }
 
   for (const manager of managers) {
-    await sendManagerSummary(manager.email, byPerson, uploadIssues, manager.display_name);
+    await sendManagerSummary(manager.email, byPerson, manager.display_name);
   }
 
   return NextResponse.json({
     totalOverdue,
-    uploadIssuesCount: uploadIssues.length,
     emailedPeople: sentTo,
     skippedPaused,
     managerSummariesSentTo: managers.map((m) => m.email),

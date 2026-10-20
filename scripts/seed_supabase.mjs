@@ -1,8 +1,8 @@
-// Push data/seed-items.json into Supabase's items/item_files tables.
+// Push data/seed-items.json into Supabase's items table.
 //
 // Usage:
 //   node --env-file=.env.local scripts/seed_supabase.mjs           (append/upsert)
-//   node --env-file=.env.local scripts/seed_supabase.mjs --reset   (truncate first — Phase 6 real-data cutover)
+//   node --env-file=.env.local scripts/seed_supabase.mjs --reset   (delete all items first)
 import { createClient } from "@supabase/supabase-js";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
@@ -23,13 +23,11 @@ function itemToRow(item) {
     keywords: item.keywords,
     topic_tree_link: item.topicTreeLink,
     page_link: item.pageLink,
-    importance: item.importance,
+    importance: item.importance || "Mittel",
     deadline: item.deadline || null,
-    content_status: item.contentStatus,
-    upload_status: item.uploadStatus || "",
-    upload_issues: item.uploadIssues || "",
+    content_status: item.contentStatus || "Nicht begonnen",
+    media_status: item.mediaStatus || null,
     mobile: !!item.mobile,
-    translated: !!item.translated,
     indexed: !!item.indexed,
   };
 }
@@ -40,32 +38,19 @@ async function main() {
   const items = JSON.parse(await readFile(itemsPath, "utf-8"));
 
   if (reset) {
-    console.log("Resetting: deleting all rows from item_files and items...");
-    await supabase.from("item_files").delete().neq("item_id", "");
+    console.log("Resetting: deleting all rows from items...");
     await supabase.from("items").delete().neq("id", "");
   }
 
-  const rows = items.map(itemToRow);
-  const { error: itemsError } = await supabase.from("items").upsert(rows, { onConflict: "id" });
-  if (itemsError) throw itemsError;
-  console.log(`Upserted ${rows.length} items.`);
-
-  let fileCount = 0;
-  for (const item of items) {
-    if (!item.files || item.files.length === 0) continue;
-    const fileRows = item.files.map((f) => ({
-      item_id: item.id,
-      name: f.name,
-      web_view_link: f.url || null,
-      size_label: f.size,
-      added_at: f.addedAt || null,
-    }));
-    const { error: filesError } = await supabase.from("item_files").insert(fileRows);
-    if (filesError) throw filesError;
-    fileCount += fileRows.length;
+  if (items.length === 0) {
+    console.log("data/seed-items.json is empty — nothing to import yet.");
+    return;
   }
-  console.log(`Inserted ${fileCount} file rows.`);
-  console.log("Done.");
+
+  const rows = items.map(itemToRow);
+  const { error } = await supabase.from("items").upsert(rows, { onConflict: "id" });
+  if (error) throw error;
+  console.log(`Upserted ${rows.length} items. Done.`);
 }
 
 main().catch((err) => {

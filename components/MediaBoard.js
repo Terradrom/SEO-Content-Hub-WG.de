@@ -7,14 +7,14 @@ export default function MediaBoard({ items, onOpenCard, onMove }) {
   const [filterType, setFilterType] = useState("All");
   const [dragOverCol, setDragOverCol] = useState(null);
 
-  const eligible = items.filter((i) => i.mediaStatus && i.mediaStatus !== "Done");
+  const eligible = items.filter((i) => i.mediaStatus);
   const filtered = eligible.filter((i) => filterType === "All" || i.type === filterType);
 
   return (
     <>
       <div className="filters">
         <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-          <option value="All">All content types</option>
+          <option value="All">Alle Content-Typen</option>
           {TYPES.map((t) => (
             <option key={t} value={t}>
               {t}
@@ -22,7 +22,7 @@ export default function MediaBoard({ items, onOpenCard, onMove }) {
           ))}
         </select>
         <div className="spacer" />
-        <div className="hint">only pieces the upload team has already gone live with show up here</div>
+        <div className="hint">hier erscheinen nur Texte, die das Content-Team schon veröffentlicht hat</div>
       </div>
 
       <div className="board cols4">
@@ -59,9 +59,9 @@ export default function MediaBoard({ items, onOpenCard, onMove }) {
         })}
       </div>
       <p className="note">
-        <b>Handoff:</b> an item lands here automatically the moment the upload team marks it Live. Moving it to{" "}
-        <b>Ready for upload</b> sends it back to the Upload Team&apos;s Queued column, marked pink so it&apos;s clear
-        it&apos;s a media re-upload, not a first-time publish.
+        <b>Übergabe:</b> Eine Karte landet hier automatisch, sobald das Content-Team den Text auf <b>Online</b> setzt.
+        Das Media-Team erstellt die Bilder, lässt sie freigeben und stellt sie selbst online – mit{" "}
+        <b>Medien online</b> ist die Aufgabe komplett erledigt.
       </p>
     </>
   );

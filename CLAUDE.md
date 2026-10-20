@@ -1,36 +1,30 @@
 # Instructions for Claude Code
 
-Read this before doing anything else in this project.
+This is the **German (werbegeschenk.de)** clone of the EU Content Hub. It has
+its own Supabase project and its own Vercel project. Never push to or deploy
+over the EU project (`Terradrom/seo-content-hub`). The `eu` git remote is
+fetch-only on purpose.
 
-## First thing to do, every time you start a session here
+## Data comes from a spreadsheet
 
-The data in `data/seed-items.json` was generated from a **snapshot** of the
-team's spreadsheet (`2026-07-05_SEO_Content_Hub_V_10__Final_Version_.xlsx`,
-imported via `scripts/import_from_xlsx.py`). It is real data, not sample
-data — but it goes stale the moment anyone edits the live sheet, and that
-will have happened by the time you're reading this.
+Tasks are imported from the team's SEO Content Hub spreadsheet (`.xlsx`) into
+`data/seed-items.json` and then into Supabase (`scripts/seed_supabase.mjs`).
+`data/meta.json` records which file and when.
 
-**Before writing or changing any code, ask the person for their current
-exported `.xlsx` of the SEO Content Hub spreadsheet.**
+**Before changing data-dependent things, ask for the current export of the
+German spreadsheet.** If there is none yet, say clearly that you're working
+without real data. The import scripts were written for the EU sheet and must
+be adapted to the German sheet's tabs and columns on first import.
 
-- If they provide one: run `python3 scripts/import_from_xlsx.py <path>` to
-  regenerate `data/seed-items.json`, check `data/meta.json` updated with the
-  new source filename/date, and briefly confirm what changed (row count,
-  any new tabs/columns the parser doesn't recognize yet).
-- If they don't have it handy or want to proceed without it: say clearly
-  that you're continuing on the existing snapshot (name the date from
-  `data/meta.json`) so it's an explicit, visible decision rather than a
-  silent assumption — then proceed.
+## Conventions
 
-Do not silently treat the existing `data/seed-items.json` as current. This
-matters more than it might seem: task counts, deadlines, and bonus-eligible
-progress in the Manager view and Bonus Arcade are only meaningful if the
-underlying data is real, and stale deadlines in particular will make the
-race/hearts mechanics compute nonsense (overdue items that aren't actually
-overdue, etc.).
+- All user-facing text is German (informal "du"). Status values are stored in
+  German exactly as shown in the UI (see `lib/items-map.js`); the DB schema
+  checks them, so change both together.
+- Branding: Roboto; colors as CSS variables in `app/globals.css`
+  (navy `#032f79`, yellow `#fbd53b`, orange `#e8531e`, ink `#343133`,
+  stone `#d8d4d4`, slate `#50616b`). Logo: `public/logo.png`.
+- Roles: `content`, `media`, `manager`. Field permissions per role live in
+  `lib/items-map.js` and are enforced in `app/api/items/[id]/route.js`.
 
-## Then read README.md
-
-It has the full architecture, what's real vs mocked, and the suggested
-build order (database → auth → Drive uploads → wiring the bonus mechanics
-to live data → deploy).
+Then read `README.md`.

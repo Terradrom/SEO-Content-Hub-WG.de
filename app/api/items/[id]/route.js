@@ -26,20 +26,14 @@ export async function PATCH(request, { params }) {
 
   const supabase = supabaseAdmin();
 
-  // Cross-team handoffs (content -> upload -> media -> upload) need the
-  // row's pre-patch state and have to happen server-side, since no single
-  // role is allowed to set another team's status field directly.
-  if ("content_status" in row || "upload_status" in row || "media_status" in row) {
-    const { data: current } = await supabase.from("items").select("upload_status, media_status").eq("id", params.id).single();
+  // The content -> media handoff needs the row's pre-patch state and has to
+  // happen server-side, since the content team can't set the media field.
+  if ("content_status" in row) {
+    const { data: current } = await supabase.from("items").select("content_status, media_status").eq("id", params.id).single();
     applyHandoffs(row, current);
   }
 
-  const { data, error } = await supabase
-    .from("items")
-    .update(row)
-    .eq("id", params.id)
-    .select("*, item_files(*)")
-    .single();
+  const { data, error } = await supabase.from("items").update(row).eq("id", params.id).select("*").single();
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

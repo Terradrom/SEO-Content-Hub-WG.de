@@ -1,12 +1,12 @@
--- Content Hub — Phase 1 schema (items + file attachments + profiles)
+-- SEO Content Hub WG.de — complete database schema for the German project.
 --
--- Run this once in the Supabase SQL Editor (Project → SQL Editor → New query).
--- Safe to re-run: uses IF NOT EXISTS / CREATE OR REPLACE throughout.
+-- Run this once on a fresh Supabase project (SQL Editor → New query →
+-- paste → Run). Safe to re-run: uses IF NOT EXISTS / CREATE OR REPLACE.
 --
--- NOTE on security: RLS is enabled with permissive policies for now (any
--- authenticated OR anon request can read/write). This is intentional for
--- Phase 1 — there's no login yet. Phase 2 replaces these policies with
--- real role-based ones once Supabase Auth + profiles.role are wired up.
+-- Security model: the app's API routes (app/api/**) use the service-role
+-- key, which bypasses RLS — the real per-role enforcement is in
+-- app/api/items/[id]/route.js. The policies below are defense-in-depth for
+-- anything hitting Supabase directly with a user's own session.
 
 -- ── items ────────────────────────────────────────────────────────────────
 create table if not exists items (
@@ -17,13 +17,17 @@ create table if not exists items (
   keywords text default '',
   topic_tree_link text default '',
   page_link text default '',
-  importance text default 'Medium',
+  importance text not null default 'Mittel'
+    check (importance in ('Hoch', 'Mittel', 'Niedrig')),
   deadline date,
-  content_status text not null default 'Not Started',
-  upload_status text default '',
-  upload_issues text default '',
+  content_status text not null default 'Nicht begonnen'
+    check (content_status in ('Nicht begonnen', 'In Arbeit', 'Online')),
+  -- null = text isn't online yet, so the media stage hasn't started
+  media_status text
+    check (media_status is null or media_status in ('Bereit für Medien', 'Medien erstellt', 'Medien freigegeben', 'Medien online')),
+  -- who on the media team has claimed the card
+  media_person text,
   mobile boolean not null default false,
-  translated boolean not null default false,
   indexed boolean not null default false,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -31,7 +35,7 @@ create table if not exists items (
 
 create index if not exists items_person_idx on items (person);
 create index if not exists items_content_status_idx on items (content_status);
-create index if not exists items_upload_status_idx on items (upload_status);
+create index if not exists items_media_status_idx on items (media_status);
 
 -- keep updated_at current on every row change
 create or replace function set_updated_at()
@@ -47,27 +51,15 @@ create trigger items_set_updated_at
   before update on items
   for each row execute function set_updated_at();
 
--- ── item_files ───────────────────────────────────────────────────────────
-create table if not exists item_files (
-  id uuid primary key default gen_random_uuid(),
-  item_id text not null references items(id) on delete cascade,
-  name text not null,
-  drive_file_id text,
-  web_view_link text,
-  size_label text,
-  added_at date not null default current_date,
-  created_at timestamptz not null default now()
-);
-
-create index if not exists item_files_item_id_idx on item_files (item_id);
-
--- ── profiles (Phase 2 will populate/use this; created now so the FK shape
---    is settled and Phase 4's uploader_reviews can reference it) ──────────
+-- ── profiles (one per auth user) ─────────────────────────────────────────
+-- `role` is the primary role (used for defaults and manager checks);
+-- `roles` lists every role a person holds (e.g. content + media).
 create table if not exists profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   email text,
   display_name text,
-  role text check (role in ('content', 'upload', 'manager')),
+  role text check (role in ('content', 'media', 'manager')),
+  roles text[],
   created_at timestamptz not null default now()
 );
 
@@ -86,16 +78,46 @@ create trigger on_auth_user_created
   after insert on auth.users
   for each row execute function handle_new_user();
 
--- ── RLS (permissive for Phase 1 — tightened in Phase 2) ────────────────────
+-- ── notification_pauses (per-person pause for overdue reminders) ────────
+create table if not exists notification_pauses (
+  id uuid primary key default gen_random_uuid(),
+  profile_id uuid not null references profiles(id) on delete cascade,
+  starts_on date not null,
+  ends_on date not null,
+  note text,
+  created_by uuid references profiles(id),
+  created_at timestamptz not null default now()
+);
+
+create index if not exists notification_pauses_profile_idx on notification_pauses (profile_id);
+
+-- ── RLS ──────────────────────────────────────────────────────────────────
 alter table items enable row level security;
-alter table item_files enable row level security;
 alter table profiles enable row level security;
+alter table notification_pauses enable row level security;
 
-drop policy if exists items_all on items;
-create policy items_all on items for all using (true) with check (true);
+-- items: any signed-in user with a role can read; no direct writes (all
+-- writes go through the API's service-role client).
+drop policy if exists items_select on items;
+create policy items_select on items for select
+  using (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role is not null));
 
-drop policy if exists item_files_all on item_files;
-create policy item_files_all on item_files for all using (true) with check (true);
+-- profiles: everyone signed in can read (needed for names); a user may
+-- update their own display_name but never their own role.
+drop policy if exists profiles_select on profiles;
+create policy profiles_select on profiles for select
+  using (auth.uid() is not null);
 
-drop policy if exists profiles_all on profiles;
-create policy profiles_all on profiles for all using (true) with check (true);
+drop policy if exists profiles_update_own_name on profiles;
+create policy profiles_update_own_name on profiles for update
+  using (auth.uid() = id)
+  with check (
+    auth.uid() = id
+    and role is not distinct from (select role from profiles p where p.id = auth.uid())
+    and roles is not distinct from (select roles from profiles p where p.id = auth.uid())
+  );
+
+-- notification_pauses: managed only through the manager-gated API.
+drop policy if exists notification_pauses_select on notification_pauses;
+create policy notification_pauses_select on notification_pauses for select
+  using (exists (select 1 from profiles where profiles.id = auth.uid() and profiles.role = 'manager'));

@@ -81,7 +81,7 @@ export default function TopicMap() {
         <div className="map-search-row">
           <input
             type="text"
-            placeholder="Search any page or topic…"
+            placeholder="Seite oder Thema suchen…"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
           />
@@ -101,8 +101,8 @@ export default function TopicMap() {
           <>
             <div className="map-legend">
               <div className="legend-item" style={{ marginRight: "auto" }}>
-                {HUBS.length} hubs · {TOPIC_NODES.length} pages · {TOPIC_CROSS_EDGES.length} internal links — click a
-                hub to explore it
+                {HUBS.length} Hubs · {TOPIC_NODES.length} Seiten · {TOPIC_CROSS_EDGES.length} interne Links – Hub
+                anklicken zum Erkunden
               </div>
             </div>
             <svg viewBox="0 0 900 700" style={{ position: "relative", zIndex: 1, width: "100%", display: "block" }}>
@@ -135,7 +135,7 @@ export default function TopicMap() {
                     <text x={h.x} y={h.y - r - 12} textAnchor="middle" fontSize="12" fontWeight="600" fill={h.color}>
                       {h.label}
                     </text>
-                    <text x={h.x} y={h.y + 5} textAnchor="middle" fontSize="13" fontWeight="700" fill="#04140f">
+                    <text x={h.x} y={h.y + 5} textAnchor="middle" fontSize="13" fontWeight="700" fill="#ffffff">
                       {h.count}
                     </text>
                   </g>
@@ -143,18 +143,19 @@ export default function TopicMap() {
               })}
             </svg>
             <div className="map-panel">
-              Click any hub above to see its real pages and how they interlink. Line thickness between hubs shows how
-              many links cross between them.
+              {HUBS.length === 0
+                ? "Noch keine Daten – die Themen-Map entsteht automatisch aus der Spalte „Topic Ideas“ der deutschen Tabelle."
+                : "Klick auf einen Hub, um seine Seiten und deren Verlinkung zu sehen. Die Linienstärke zeigt, wie viele Links zwischen zwei Hubs bestehen."}
             </div>
           </>
         ) : (
           <>
             <div className="map-legend">
-              <div className="legend-item" onClick={() => { setSelectedHub(null); setActiveId(null); }} style={{ cursor: "pointer", color: "var(--accent)" }}>
-                ← All hubs
+              <div className="legend-item" onClick={() => { setSelectedHub(null); setActiveId(null); }} style={{ cursor: "pointer", color: "var(--navy)", fontWeight: 600 }}>
+                ← Alle Hubs
               </div>
               <div className="legend-item" style={{ marginLeft: "auto" }}>
-                {hubById(selectedHub)?.label} · {detail.nodes.length} pages · click a node to trace its links
+                {hubById(selectedHub)?.label} · {detail.nodes.length} Seiten · Punkt anklicken, um die Links zu verfolgen
               </div>
             </div>
             <svg viewBox="0 0 900 700" style={{ position: "relative", zIndex: 1, width: "100%", display: "block" }}>
@@ -196,7 +197,7 @@ export default function TopicMap() {
                       r={isActive ? r + 3 : r}
                       fill={hubById(selectedHub)?.color}
                       fillOpacity={n.kind === "category" ? 0.9 : 0.65}
-                      stroke={isActive ? "#fff" : "none"}
+                      stroke={isActive ? "var(--text)" : "none"}
                       strokeWidth="1.5"
                     />
                     {crossHubCount > 0 && (
@@ -204,7 +205,7 @@ export default function TopicMap() {
                         +{crossHubCount}
                       </text>
                     )}
-                    <text x={n.x} y={n.y + r + 11} textAnchor="middle" fontSize="9" fill={isActive ? "#fff" : "var(--muted)"}>
+                    <text x={n.x} y={n.y + r + 11} textAnchor="middle" fontSize="9" fill={isActive ? "var(--text)" : "var(--muted)"}>
                       {n.label}
                     </text>
                   </g>
@@ -216,7 +217,7 @@ export default function TopicMap() {
                 <>
                   <b>{active.label}</b> — {hubById(active.hub)?.label}, {active.kind}
                   <br />
-                  links to:{" "}
+                  verlinkt auf:{" "}
                   {connected.length ? (
                     connected.map((id) => {
                       const n = nodeById(id);
@@ -228,21 +229,21 @@ export default function TopicMap() {
                       );
                     })
                   ) : (
-                    <span style={{ color: "var(--muted)" }}>nothing yet</span>
+                    <span style={{ color: "var(--muted)" }}>noch nichts</span>
                   )}
                 </>
               ) : (
-                <>Click any node to see how it&apos;s meant to interlink. The small +N badge means it also links outside this hub.</>
+                <>Klick auf einen Punkt, um seine geplante Verlinkung zu sehen. Das kleine +N bedeutet, dass er auch auf Seiten außerhalb dieses Hubs verlinkt.</>
               )}
             </div>
           </>
         )}
       </div>
       <p className="note">
-        <b>Real linking data:</b> generated from the sheet&apos;s &quot;Topic Ideas&quot; column (🔗 Link to: X, Y,
-        Z) across all {TOPIC_NODES.length} items — {TOPIC_CROSS_EDGES.length} links matched to an existing page. A
-        few references to not-yet-created pages (e.g. sub-subcategories still planned) couldn&apos;t be matched and
-        are left out; re-run <code>scripts/build_topic_map.mjs</code> against a fresh export to update this.
+        <b>Echte Verlinkungsdaten:</b> erzeugt aus der Spalte „Topic Ideas“ der Tabelle (🔗 Link to: X, Y, Z) über
+        alle {TOPIC_NODES.length} Seiten – {TOPIC_CROSS_EDGES.length} Links passen zu einer bestehenden Seite.
+        Verweise auf noch nicht angelegte Seiten fehlen. Zum Aktualisieren <code>scripts/build_topic_map.mjs</code>
+        mit einem frischen Export ausführen.
       </p>
     </>
   );

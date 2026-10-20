@@ -84,21 +84,10 @@ function canonicalHub(raw) {
   return cleaned || "Other";
 }
 
-const HUB_COLORS = {
-  Sustainability: "#00E08A",
-  "Tech & Innovation": "#22D3C7",
-  Luxury: "#FF9B6B",
-  "Wellness & Health": "#B6E85C",
-  "Home & Lifestyle": "#5CA8E8",
-  "Events & Trade": "#E85CC7",
-  "Office & Productivity": "#E8C15C",
-  "Corporate Gifting": "#8C6CE8",
-  Seasonal: "#E85C5C",
-  "Travel & Luggage": "#5CE8B0",
-  "Sports & Lifestyle": "#E8935C",
-  Gastronomy: "#C15CE8",
-  Other: "#84a49a",
-};
+// Werbegeschenk.de brand colors plus a few darker/lighter steps of them,
+// handed out by hub order (hub names depend on the sheet). All dark
+// enough for the white count label drawn on top.
+const HUB_PALETTE = ["#032f79", "#e8531e", "#50616b", "#c9a21f", "#1f5bb8", "#b8431a", "#343133", "#2c7a8c", "#7a4fb0", "#3d8b4a"];
 
 function normalize(str) {
   return (str || "")
@@ -165,7 +154,7 @@ function main() {
   const HUBS = hubsUsed.map((h, i) => ({
     id: h.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
     label: h,
-    color: HUB_COLORS[h] || "#84a49a",
+    color: h === "Other" ? "#8a8586" : HUB_PALETTE[i % HUB_PALETTE.length],
     angle: i * hubAngleStep - 90,
     count: items.filter((it) => it.hub === h).length,
   }));

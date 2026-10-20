@@ -1,231 +1,80 @@
 "use client";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { copyText } from "../lib/format";
-import { CONTENT_STATUSES, UPLOAD_STATUSES, MEDIA_STATUSES } from "../lib/data";
-import { supabaseBrowser } from "../lib/supabase-browser";
+import { CONTENT_STATUSES, MEDIA_STATUSES } from "../lib/data";
 
 export default function CardModal({ item, onClose, onSave, profile, roles, boardView }) {
-  const [form, setForm] = useState({ ...item, files: item.files || [], mediaFiles: item.mediaFiles || [] });
-  const [dragging, setDragging] = useState(false);
-  const [mediaDragging, setMediaDragging] = useState(false);
+  const [form, setForm] = useState({ ...item });
   const [saveMsg, setSaveMsg] = useState("");
   const [copiedField, setCopiedField] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  const [mediaUploading, setMediaUploading] = useState(false);
-  const [fileError, setFileError] = useState("");
-  const [mediaFileError, setMediaFileError] = useState("");
   const [assignMsg, setAssignMsg] = useState("");
-  const fileInputRef = useRef(null);
-  const mediaInputRef = useRef(null);
 
   if (!item) return null;
 
   const myRoles = roles || [];
   const isManager = myRoles.includes("manager");
-  const canClaimUpload = myRoles.includes("upload") || isManager;
+  const canEditMedia = isManager || myRoles.includes("media");
   // Which view to render is about which board the card was opened from, not
-  // a fixed role — Zoe (media + upload) should see the simplified media
-  // view from the Media board and the full upload view from Upload's.
+  // a fixed role — someone with content + media sees the simplified media
+  // view from the Media board and the full view from the Content board.
   const isMediaViewer = boardView === "media";
-  const showMediaSection = !isMediaViewer && !!form.mediaStatus;
-  const showPageLink = form.type !== "Glossaries";
-  const fullyDone = form.uploadStatus === "Live" && form.mediaStatus === "Done";
-  const mediaInProgress =
-    form.uploadStatus === "Live" && form.mediaStatus && !["Done", "Ready for upload"].includes(form.mediaStatus);
+  const showPageLink = form.type !== "Glossar";
+  const fullyDone = form.contentStatus === "Online" && form.mediaStatus === "Medien online";
+  const mediaInProgress = form.contentStatus === "Online" && form.mediaStatus && form.mediaStatus !== "Medien online";
 
   function patch(fields) {
     setForm((f) => ({ ...f, ...fields }));
   }
 
-  // Three steps so the actual file bytes never pass through our Vercel API
-  // route (capped at ~4.5MB there) — sign gets a one-time upload URL,
-  // uploadToSignedUrl sends the file straight to Supabase Storage from the
-  // browser, confirm records the item_files row once that succeeds.
-  async function uploadFile(file, category) {
-    const signRes = await fetch(`/api/items/${item.id}/files/sign`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ fileName: file.name }),
-    });
-    if (!signRes.ok) {
-      const { error } = await signRes.json().catch(() => ({}));
-      throw new Error(error || "couldn't prepare upload");
-    }
-    const { path, token, publicUrl } = await signRes.json();
-
-    const { error: uploadError } = await supabaseBrowser()
-      .storage.from("item-files")
-      .uploadToSignedUrl(path, token, file);
-    if (uploadError) throw new Error(uploadError.message || "upload failed");
-
-    const confirmRes = await fetch(`/api/items/${item.id}/files/confirm`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        name: file.name,
-        path,
-        publicUrl,
-        size: Math.round(file.size / 1024) + " KB",
-        category,
-      }),
-    });
-    if (!confirmRes.ok) {
-      const { error } = await confirmRes.json().catch(() => ({}));
-      throw new Error(error || "upload saved but couldn't be recorded");
-    }
-    return confirmRes.json();
-  }
-
-  async function addFile(file) {
-    setFileError("");
-    setUploading(true);
-    try {
-      const uploaded = await uploadFile(file, "document");
-      patch({ files: [...form.files, uploaded] });
-    } catch (err) {
-      setFileError(err.message);
-    } finally {
-      setUploading(false);
-    }
-  }
-
-  async function addMediaFiles(fileList) {
-    setMediaFileError("");
-    setMediaUploading(true);
-    try {
-      const uploadedList = [];
-      for (const file of fileList) {
-        uploadedList.push(await uploadFile(file, "media"));
-      }
-      patch({ mediaFiles: [...form.mediaFiles, ...uploadedList] });
-    } catch (err) {
-      setMediaFileError(err.message);
-    } finally {
-      setMediaUploading(false);
-    }
-  }
-
-  async function removeFile(idx) {
-    const target = form.files[idx];
-    patch({ files: form.files.filter((_, i) => i !== idx) });
-    if (target?.id) {
-      await fetch(`/api/items/${item.id}/files/${target.id}`, { method: "DELETE" }).catch(() => {});
-    }
-  }
-
-  async function removeMediaFile(idx) {
-    const target = form.mediaFiles[idx];
-    patch({ mediaFiles: form.mediaFiles.filter((_, i) => i !== idx) });
-    if (target?.id) {
-      await fetch(`/api/items/${item.id}/files/${target.id}`, { method: "DELETE" }).catch(() => {});
-    }
-  }
-
   async function handleCopy(field, value) {
-    const ok = await copyText(value);
+    await copyText(value);
     setCopiedField(field);
     setTimeout(() => setCopiedField(null), 1200);
   }
 
   async function handleSave() {
-    setSaveMsg("saving…");
-    await onSave(form);
-    setSaveMsg("saved ✓");
+    setSaveMsg("wird gespeichert…");
+    try {
+      await onSave(form);
+      setSaveMsg("gespeichert ✓");
+    } catch {
+      setSaveMsg("Speichern fehlgeschlagen – bitte erneut versuchen");
+    }
   }
 
-  // Claiming saves immediately rather than waiting for "Save changes" —
-  // the whole point is avoiding a mixup where two people grab the same
-  // card, so the claim should land the moment it's clicked.
-  async function setUploader(name) {
-    setAssignMsg("saving…");
-    const next = { ...form, uploader: name };
+  // Claiming saves immediately rather than waiting for "Speichern" — the
+  // whole point is avoiding two people grabbing the same card.
+  async function setMediaPerson(name) {
+    setAssignMsg("wird gespeichert…");
+    const next = { ...form, mediaPerson: name };
     setForm(next);
     try {
       await onSave(next);
       setAssignMsg("");
     } catch {
-      setAssignMsg("couldn't save — try again");
+      setAssignMsg("konnte nicht gespeichert werden – bitte erneut versuchen");
     }
-  }
-
-  function mediaFilesSection(dropzoneLabel) {
-    return (
-      <>
-        <label className="section-label">Media images</label>
-        <div
-          className={`dropzone ${mediaDragging ? "drag" : ""}`}
-          onClick={() => !mediaUploading && mediaInputRef.current?.click()}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setMediaDragging(true);
-          }}
-          onDragLeave={() => setMediaDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setMediaDragging(false);
-            if (e.dataTransfer.files.length && !mediaUploading) addMediaFiles([...e.dataTransfer.files]);
-          }}
-        >
-          {mediaUploading ? (
-            <strong>Uploading…</strong>
-          ) : (
-            <>
-              <strong>Drop images here</strong> or click to attach
-              <br />
-              {dropzoneLabel || "multiple images allowed"}
-            </>
-          )}
-          <input
-            ref={mediaInputRef}
-            type="file"
-            accept="image/*"
-            multiple
-            style={{ display: "none" }}
-            onChange={(e) => e.target.files.length && addMediaFiles([...e.target.files])}
-          />
-        </div>
-        {mediaFileError && <div style={{ color: "var(--rust)" }}>{mediaFileError}</div>}
-        <div className="file-list">
-          {form.mediaFiles.map((f, idx) => (
-            <div className="file-item" key={f.id || idx}>
-              <span className="fname">
-                🖼️{" "}
-                {f.url ? (
-                  <a href={f.url} target="_blank" rel="noreferrer">
-                    {f.name}
-                  </a>
-                ) : (
-                  f.name
-                )}{" "}
-                <span style={{ color: "var(--muted)" }}>· {f.size}</span>
-              </span>
-              <button onClick={() => removeMediaFile(idx)}>remove</button>
-            </div>
-          ))}
-        </div>
-      </>
-    );
   }
 
   function claimRow() {
     const me = profile?.display_name;
-    const assignedToMe = form.uploader && me && form.uploader === me;
+    const assignedToMe = form.mediaPerson && me && form.mediaPerson === me;
     return (
       <div className="claim-row">
-        <span className="hint">{form.uploader ? `Working on it: ${form.uploader}` : "Unclaimed"}</span>
-        {canClaimUpload && !form.uploader && me && (
-          <button className="mini-btn" onClick={() => setUploader(me)}>
-            assign to me
+        <span className="hint">{form.mediaPerson ? `In Bearbeitung von: ${form.mediaPerson}` : "Noch niemand zugewiesen"}</span>
+        {canEditMedia && !form.mediaPerson && me && (
+          <button className="mini-btn" onClick={() => setMediaPerson(me)}>
+            mir zuweisen
           </button>
         )}
-        {canClaimUpload && assignedToMe && (
-          <button className="mini-btn" onClick={() => setUploader(null)}>
-            unassign
+        {canEditMedia && assignedToMe && (
+          <button className="mini-btn" onClick={() => setMediaPerson(null)}>
+            Zuweisung aufheben
           </button>
         )}
-        {canClaimUpload && form.uploader && !assignedToMe && isManager && (
-          <button className="mini-btn" onClick={() => setUploader(me)}>
-            reassign to me
+        {canEditMedia && form.mediaPerson && !assignedToMe && isManager && (
+          <button className="mini-btn" onClick={() => setMediaPerson(me)}>
+            mir zuweisen
           </button>
         )}
         {assignMsg && <span className="hint">{assignMsg}</span>}
@@ -233,48 +82,59 @@ export default function CardModal({ item, onClose, onSave, profile, roles, board
     );
   }
 
+  function mediaStatusSelect() {
+    return (
+      <select value={form.mediaStatus || ""} onChange={(e) => patch({ mediaStatus: e.target.value })} disabled={!canEditMedia}>
+        {MEDIA_STATUSES.map((s) => (
+          <option key={s} value={s}>
+            {s}
+          </option>
+        ))}
+      </select>
+    );
+  }
+
+  function pageLinkRow() {
+    return (
+      <div className="info-row">
+        <span className="il">Seiten-URL</span>
+        <span className="iv">{form.pageLink || "—"}</span>
+        <button className="copy-btn" onClick={() => handleCopy("url", form.pageLink)}>
+          {copiedField === "url" ? "kopiert ✓" : "kopieren"}
+        </button>
+      </div>
+    );
+  }
+
   // ── Media team gets a deliberately stripped-down view: the page link
-  // (skipped for Glossaries, which don't have a clean one), their status
-  // column, and the image upload area — nothing else. ─────────────────────
+  // (skipped for glossary entries, which don't have a clean one), who's on
+  // it, and their status — nothing else. ──────────────────────────────────
   if (isMediaViewer) {
     return (
       <div className="overlay" onClick={onClose}>
         <div className="modal" onClick={(e) => e.stopPropagation()}>
           <div className="modal-head">
             <h2>{form.topic}</h2>
-            <button className="close-x" onClick={onClose}>
+            <button className="close-x" onClick={onClose} aria-label="Schließen">
               ✕
             </button>
           </div>
           <div className="sub">{form.type}</div>
 
-          {showPageLink && (
-            <div className="info-row">
-              <span className="il">Page URL</span>
-              <span className="iv">{form.pageLink || "—"}</span>
-              <button className="copy-btn" onClick={() => handleCopy("url", form.pageLink)}>
-                {copiedField === "url" ? "copied ✓" : "copy"}
-              </button>
-            </div>
-          )}
+          {showPageLink && pageLinkRow()}
+
+          <label className="section-label">Wer arbeitet daran</label>
+          {claimRow()}
 
           <div className="field-row">
             <div className="field">
-              <label>Media status</label>
-              <select value={form.mediaStatus || ""} onChange={(e) => patch({ mediaStatus: e.target.value })}>
-                {MEDIA_STATUSES.map((s) => (
-                  <option key={s} value={s}>
-                    {s}
-                  </option>
-                ))}
-              </select>
+              <label>Medien-Status</label>
+              {mediaStatusSelect()}
             </div>
           </div>
 
-          {mediaFilesSection()}
-
           <button className="save-note-btn" onClick={handleSave}>
-            Save changes
+            Änderungen speichern
           </button>
           <div className="status-msg">{saveMsg}</div>
         </div>
@@ -287,40 +147,34 @@ export default function CardModal({ item, onClose, onSave, profile, roles, board
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <div className="modal-head">
           <h2>{form.topic}</h2>
-          <button className="close-x" onClick={onClose}>
+          <button className="close-x" onClick={onClose} aria-label="Schließen">
             ✕
           </button>
         </div>
         <div className="sub">
-          {form.type} · assigned to {form.person}
+          {form.type} · zugewiesen an {form.person}
         </div>
 
-        {fullyDone && <div className="done-badge" style={{ marginBottom: 12 }}>✅ Text + media live — fully done, no action needed</div>}
+        {fullyDone && <div className="done-badge" style={{ marginBottom: 12 }}>✅ Text + Medien online – komplett erledigt</div>}
         {mediaInProgress && (
           <div className="progress-badge" style={{ marginBottom: 12 }}>
-            🎨 Live, but media team still working on it ({form.mediaStatus})
+            🎨 Online, Media-Team arbeitet noch an den Bildern ({form.mediaStatus})
           </div>
         )}
 
         <div className="info-row">
-          <span className="il">Topic tree</span>
+          <span className="il">Themenbaum</span>
           <span className="iv">{form.topicTreeLink || "—"}</span>
           <button className="copy-btn" onClick={() => handleCopy("tree", form.topicTreeLink)}>
-            {copiedField === "tree" ? "copied ✓" : "copy"}
+            {copiedField === "tree" ? "kopiert ✓" : "kopieren"}
           </button>
         </div>
-        <div className="info-row">
-          <span className="il">Page URL</span>
-          <span className="iv">{form.pageLink || "—"}</span>
-          <button className="copy-btn" onClick={() => handleCopy("url", form.pageLink)}>
-            {copiedField === "url" ? "copied ✓" : "copy"}
-          </button>
-        </div>
+        {pageLinkRow()}
         <div className="kw-box">
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-            <b style={{ color: "var(--paper)", fontFamily: "Inter" }}>Keywords</b>
+            <b>Keywords</b>
             <button className="copy-btn" onClick={() => handleCopy("keywords", form.keywords)} style={{ flexShrink: 0 }}>
-              {copiedField === "keywords" ? "copied ✓" : "copy all"}
+              {copiedField === "keywords" ? "kopiert ✓" : "alle kopieren"}
             </button>
           </div>
           <br />
@@ -329,7 +183,7 @@ export default function CardModal({ item, onClose, onSave, profile, roles, board
 
         <div className="field-row">
           <div className="field">
-            <label>Content status</label>
+            <label>Content-Status</label>
             <select value={form.contentStatus} onChange={(e) => patch({ contentStatus: e.target.value })}>
               {CONTENT_STATUSES.map((s) => (
                 <option key={s} value={s}>
@@ -340,148 +194,42 @@ export default function CardModal({ item, onClose, onSave, profile, roles, board
           </div>
           <div className="field">
             <label>Deadline</label>
-            <input type="date" value={form.deadline} onChange={(e) => patch({ deadline: e.target.value })} />
+            <input type="date" value={form.deadline || ""} onChange={(e) => patch({ deadline: e.target.value })} />
           </div>
         </div>
 
-        {form.contentStatus === "Ready for Upload" ? (
+        {form.contentStatus === "Online" ? (
           <>
-            <label className="section-label">Who&apos;s on it</label>
-            {claimRow()}
-            <div className="field-row">
-              <div className="field">
-                <label>Upload status</label>
-                <select value={form.uploadStatus || "Queued"} onChange={(e) => patch({ uploadStatus: e.target.value })}>
-                  {UPLOAD_STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
+            <label className="section-label">Nach der Veröffentlichung</label>
             <div className="checks">
               <label>
                 <input type="checkbox" checked={!!form.mobile} onChange={(e) => patch({ mobile: e.target.checked })} />
-                Mobile optimised
-              </label>
-              <label>
-                <input type="checkbox" checked={!!form.translated} onChange={(e) => patch({ translated: e.target.checked })} />
-                Translated
+                Mobil optimiert
               </label>
               <label>
                 <input type="checkbox" checked={!!form.indexed} onChange={(e) => patch({ indexed: e.target.checked })} />
-                Indexed
+                Indexiert
               </label>
             </div>
-            <label className="section-label">Upload issue (blocks &quot;Live&quot; until cleared)</label>
-            <textarea
-              value={form.uploadIssues || ""}
-              placeholder="e.g. missing product image, keyword conflict..."
-              onChange={(e) => patch({ uploadIssues: e.target.value })}
-            />
           </>
         ) : (
-          <div className="upload-gate">
-            Upload-team fields unlock once this card is moved to <b>Ready for Upload</b>.
+          <div className="info-box">
+            Die Checks nach der Veröffentlichung erscheinen, sobald die Karte auf <b>Online</b> steht.
           </div>
         )}
 
-        {showMediaSection && (
+        {form.mediaStatus && (
           <>
-            <label className="section-label">Media team{form.mediaStatus === "Ready for upload" ? " — done, awaiting re-upload" : ""}</label>
+            <label className="section-label">Media-Team</label>
+            {claimRow()}
             <div className="field-row">
-              <div className="field">
-                <select
-                  value={form.mediaStatus}
-                  onChange={(e) => patch({ mediaStatus: e.target.value })}
-                  disabled={!(isManager || myRoles.includes("media"))}
-                >
-                  {MEDIA_STATUSES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              <div className="field">{mediaStatusSelect()}</div>
             </div>
-            {!isManager && form.mediaFiles.length > 0 && (
-              <div className="file-list">
-                {form.mediaFiles.map((f, idx) => (
-                  <div className="file-item" key={f.id || idx}>
-                    <span className="fname">
-                      🖼️{" "}
-                      {f.url ? (
-                        <a href={f.url} target="_blank" rel="noreferrer">
-                          {f.name}
-                        </a>
-                      ) : (
-                        f.name
-                      )}{" "}
-                      <span style={{ color: "var(--muted)" }}>· {f.size}</span>
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
           </>
         )}
 
-        <label className="section-label">Document</label>
-        <div
-          className={`dropzone ${dragging ? "drag" : ""}`}
-          onClick={() => !uploading && fileInputRef.current?.click()}
-          onDragOver={(e) => {
-            e.preventDefault();
-            setDragging(true);
-          }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(e) => {
-            e.preventDefault();
-            setDragging(false);
-            if (e.dataTransfer.files.length && !uploading) addFile(e.dataTransfer.files[0]);
-          }}
-        >
-          {uploading ? (
-            <strong>Uploading…</strong>
-          ) : (
-            <>
-              <strong>Drop a file here</strong> or click to attach
-              <br />
-              pushes straight into shared storage
-            </>
-          )}
-          <input
-            ref={fileInputRef}
-            type="file"
-            style={{ display: "none" }}
-            onChange={(e) => e.target.files.length && addFile(e.target.files[0])}
-          />
-        </div>
-        {fileError && <div style={{ color: "var(--rust)" }}>{fileError}</div>}
-        <div className="file-list">
-          {form.files.map((f, idx) => (
-            <div className="file-item" key={f.id || idx}>
-              <span className="fname">
-                📄{" "}
-                {f.url ? (
-                  <a href={f.url} target="_blank" rel="noreferrer">
-                    {f.name}
-                  </a>
-                ) : (
-                  f.name
-                )}{" "}
-                <span style={{ color: "var(--muted)" }}>· {f.size}</span>
-              </span>
-              <button onClick={() => removeFile(idx)}>remove</button>
-            </div>
-          ))}
-        </div>
-
-        {isManager && mediaFilesSection("manager can also add media images here")}
-
         <button className="save-note-btn" onClick={handleSave}>
-          Save changes
+          Änderungen speichern
         </button>
         <div className="status-msg">{saveMsg}</div>
       </div>

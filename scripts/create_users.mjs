@@ -7,13 +7,12 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.
   auth: { persistSession: false },
 });
 
+// Fill in the German team before running. role: "content" | "media" | "manager".
+// Optional extra roles for people who do both: roles: ["content", "media"].
 const USERS = [
-  { email: "mironmueller41@gmail.com", role: "manager", name: "Miron" },
-  { email: "tarynkondrollochis@gmail.com", role: "content", name: "Mia" },
-  { email: "ashveenaanne@gmail.com", role: "content", name: "Ashveena" },
-  { email: "michelle.bridget@gmail.com", role: "content", name: "Michelle" },
-  { email: "adam.kondrollochis@gmail.com", role: "upload", name: "Adam" },
-  { email: "potatozoe02@gmail.com", role: "media", name: "Zoe", simplePassword: true },
+  // { email: "name@beispiel.de", role: "manager", name: "Vorname" },
+  // { email: "name@beispiel.de", role: "content", name: "Vorname" },
+  // { email: "name@beispiel.de", role: "media", name: "Vorname", simplePassword: true },
 ];
 
 function tempPassword() {
@@ -45,7 +44,7 @@ async function main() {
         const existing = list.users.find((x) => x.email === u.email);
         if (existing) {
           results.push({ ...u, id: existing.id, password: "(already existed — password unchanged)" });
-          await supabase.from("profiles").update({ role: u.role, display_name: u.name }).eq("id", existing.id);
+          await supabase.from("profiles").update({ role: u.role, roles: u.roles || [u.role], display_name: u.name }).eq("id", existing.id);
           continue;
         }
       }
@@ -53,7 +52,7 @@ async function main() {
       continue;
     }
     const userId = data.user.id;
-    await supabase.from("profiles").update({ role: u.role, display_name: u.name }).eq("id", userId);
+    await supabase.from("profiles").update({ role: u.role, roles: u.roles || [u.role], display_name: u.name }).eq("id", userId);
     results.push({ ...u, id: userId, password });
   }
 

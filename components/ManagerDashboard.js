@@ -1,15 +1,15 @@
 "use client";
 import { useEffect, useState } from "react";
-import { derivePeople, MEDIA_STATUSES } from "../lib/data";
+import { derivePeople, MEDIA_STATUSES, ROLE_LABELS } from "../lib/data";
 import { daysUntil, fmtDate } from "../lib/format";
 
 function nextDeadlineFor(items, person) {
   const upcoming = items
-    .filter((i) => i.person === person && i.contentStatus !== "Ready for Upload")
+    .filter((i) => i.person === person && i.contentStatus !== "Online" && i.deadline)
     .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))[0];
-  if (!upcoming) return "all clear";
+  if (!upcoming) return "alles erledigt";
   const d = daysUntil(upcoming.deadline);
-  return d < 0 ? `${Math.abs(d)}d overdue` : `due in ${d}d`;
+  return d < 0 ? `${Math.abs(d)} T überfällig` : `fällig in ${d} T`;
 }
 
 function NotificationPauses() {
@@ -27,8 +27,8 @@ function NotificationPauses() {
       fetch("/api/notification-pauses").then((r) => r.json()),
     ])
       .then(([p, pz]) => {
-        setProfiles(p);
-        setPauses(pz);
+        setProfiles(Array.isArray(p) ? p : []);
+        setPauses(Array.isArray(pz) ? pz : []);
       })
       .finally(() => setLoading(false));
   }
@@ -66,25 +66,25 @@ function NotificationPauses() {
   }
 
   return (
-    <div className="upload-gate" style={{ marginTop: 10 }}>
+    <div className="info-box" style={{ marginTop: 10 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
         <span>
-          <b style={{ color: "var(--paper)" }}>Overdue email reminders</b> — once an item is 3+ days late, its writer
-          gets emailed once a day (08:00 UTC) until it's moved to Ready for Upload; you get a full daily summary.
-          Pause a specific person below (e.g. while they're out sick) — this button runs a real check immediately,
-          it's not a test.
+          <b>E-Mail-Erinnerungen bei Verzug</b> – ist eine Aufgabe 3+ Tage überfällig, bekommt die zuständige Person
+          einmal täglich (08:00 UTC) eine E-Mail, bis die Karte auf Online steht. Du bekommst täglich eine
+          Zusammenfassung. Unten kannst du einzelne Personen pausieren (z. B. bei Krankheit). Der Button startet eine
+          echte Prüfung, keinen Test.
         </span>
         <button className="mini-btn" onClick={runCheckNow} disabled={checking}>
-          {checking ? "running…" : "send reminder check now"}
+          {checking ? "läuft…" : "Erinnerungen jetzt prüfen"}
         </button>
       </div>
 
       {checkResult && (
         <p style={{ marginTop: 8 }}>
           {checkResult.error
-            ? `Error: ${checkResult.error}`
-            : `Emailed ${checkResult.emailedPeople?.length || 0} writer(s), ${checkResult.totalOverdue} overdue item(s) total${
-                checkResult.skippedPaused?.length ? `, skipped (paused): ${checkResult.skippedPaused.join(", ")}` : ""
+            ? `Fehler: ${checkResult.error}`
+            : `${checkResult.emailedPeople?.length || 0} Person(en) angeschrieben, ${checkResult.totalOverdue} überfällige Aufgabe(n) insgesamt${
+                checkResult.skippedPaused?.length ? `, pausiert übersprungen: ${checkResult.skippedPaused.join(", ")}` : ""
               }.`}
         </p>
       )}
@@ -95,28 +95,28 @@ function NotificationPauses() {
             <div className="field" style={{ minWidth: 140 }}>
               <label>Person</label>
               <select value={form.profileId} onChange={(e) => setForm((f) => ({ ...f, profileId: e.target.value }))}>
-                <option value="">select…</option>
+                <option value="">auswählen…</option>
                 {profiles.map((p) => (
                   <option key={p.id} value={p.id}>
-                    {p.display_name || p.email} ({(p.roles?.length ? p.roles : [p.role]).join(" + ")})
+                    {p.display_name || p.email} ({(p.roles?.length ? p.roles : [p.role]).map((r) => ROLE_LABELS[r] || r).join(" + ")})
                   </option>
                 ))}
               </select>
             </div>
             <div className="field" style={{ minWidth: 130 }}>
-              <label>From</label>
+              <label>Von</label>
               <input type="date" value={form.startsOn} onChange={(e) => setForm((f) => ({ ...f, startsOn: e.target.value }))} />
             </div>
             <div className="field" style={{ minWidth: 130 }}>
-              <label>Until</label>
+              <label>Bis</label>
               <input type="date" value={form.endsOn} onChange={(e) => setForm((f) => ({ ...f, endsOn: e.target.value }))} />
             </div>
             <div className="field" style={{ minWidth: 160 }}>
-              <label>Note (optional)</label>
-              <input type="text" placeholder="e.g. sick leave" value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} />
+              <label>Notiz (optional)</label>
+              <input type="text" placeholder="z. B. krank" value={form.note} onChange={(e) => setForm((f) => ({ ...f, note: e.target.value }))} />
             </div>
             <button className="mini-btn" type="submit">
-              add pause
+              Pause hinzufügen
             </button>
           </form>
 
@@ -128,7 +128,7 @@ function NotificationPauses() {
                     {p.profiles?.display_name || p.profiles?.email} · {fmtDate(p.starts_on)} → {fmtDate(p.ends_on)}
                     {p.note ? ` · ${p.note}` : ""}
                   </span>
-                  <button onClick={() => removePause(p.id)}>remove</button>
+                  <button onClick={() => removePause(p.id)}>entfernen</button>
                 </div>
               ))}
             </div>
@@ -141,27 +141,22 @@ function NotificationPauses() {
 
 export default function ManagerDashboard({ items }) {
   const people = derivePeople(items);
-  const totalContentDone = items.filter((i) => i.contentStatus === "Ready for Upload").length;
-  const totalLive = items.filter((i) => i.uploadStatus === "Live").length;
-  const totalIssues = items.filter((i) => i.uploadStatus === "Issues").length;
-
-  const sectionTitle = {
-    fontFamily: "'Fraunces',serif",
-    fontWeight: 600,
-    fontSize: "15px",
-    margin: "4px 0 10px",
-    color: "var(--muted)",
-    textTransform: "uppercase",
-    letterSpacing: ".05em",
-  };
+  const totalOnline = items.filter((i) => i.contentStatus === "Online").length;
+  const totalMediaDone = items.filter((i) => i.mediaStatus === "Medien online").length;
+  const totalOverdue = items.filter((i) => i.contentStatus !== "Online" && i.deadline && daysUntil(i.deadline) < 0).length;
 
   return (
     <>
-      <h3 style={sectionTitle}>Content team — by writer</h3>
+      <h3 className="section-title">Content-Team – nach Autor:in</h3>
       <section className="dash">
+        {people.length === 0 && (
+          <div className="dash-card">
+            <div className="meta">Noch keine Aufgaben – sie erscheinen nach dem Import der Tabelle.</div>
+          </div>
+        )}
         {people.map((p) => {
           const personItems = items.filter((i) => i.person === p);
-          const done = personItems.filter((i) => i.contentStatus === "Ready for Upload").length;
+          const done = personItems.filter((i) => i.contentStatus === "Online").length;
           const pct = personItems.length ? Math.round((done / personItems.length) * 100) : 0;
           return (
             <div className="dash-card" key={p}>
@@ -172,10 +167,10 @@ export default function ManagerDashboard({ items }) {
                 </span>
               </div>
               <div className="bar-track">
-                <div className="bar-fill" style={{ width: `${pct}%`, background: "var(--sage)" }} />
+                <div className="bar-fill" style={{ width: `${pct}%`, background: "var(--navy)" }} />
               </div>
               <div className="meta">
-                <span>{pct}% ready</span>
+                <span>{pct}% online</span>
                 <span>{nextDeadlineFor(items, p)}</span>
               </div>
             </div>
@@ -183,36 +178,16 @@ export default function ManagerDashboard({ items }) {
         })}
       </section>
 
-      <h3 style={{ ...sectionTitle, marginTop: "20px" }}>Upload team — publishing pipeline</h3>
+      <h3 className="section-title">Media-Team – Pipeline</h3>
       <section className="dash">
-        {[
-          { label: "Queued", color: "var(--muted)" },
-          { label: "Uploading", color: "var(--blue)" },
-          { label: "Issues", color: "var(--rust)" },
-          { label: "Live", color: "var(--sage)" },
-        ].map((s) => (
-          <div className="dash-card" key={s.label}>
-            <div className="who">
-              <span>{s.label}</span>
-              <span>{items.filter((i) => i.uploadStatus === s.label).length}</span>
-            </div>
-            <div className="bar-track">
-              <div className="bar-fill" style={{ width: "100%", background: s.color }} />
-            </div>
-          </div>
-        ))}
-      </section>
-
-      <h3 style={{ ...sectionTitle, marginTop: "20px" }}>Media team — pipeline</h3>
-      <section className="dash">
-        {MEDIA_STATUSES.map((label, i) => (
+        {MEDIA_STATUSES.map((label) => (
           <div className="dash-card" key={label}>
             <div className="who">
               <span>{label}</span>
               <span>{items.filter((it) => it.mediaStatus === label).length}</span>
             </div>
             <div className="bar-track">
-              <div className="bar-fill" style={{ width: "100%", background: "var(--pink)" }} />
+              <div className="bar-fill" style={{ width: "100%", background: label === "Medien online" ? "var(--success)" : "var(--yellow)" }} />
             </div>
           </div>
         ))}
@@ -220,40 +195,29 @@ export default function ManagerDashboard({ items }) {
 
       <div className="bonus">
         <div className="b-title">
-          Overall pipeline
+          Gesamt-Pipeline
           <small>
-            {totalLive} of {items.length} pieces are live on the site.
+            {totalMediaDone} von {items.length} Aufgaben sind komplett fertig (Text + Medien online).
           </small>
         </div>
         <div className="b-stat">
-          <div className="n">{totalContentDone}</div>
-          <div className="l">Handed to upload</div>
+          <div className="n">{totalOnline}</div>
+          <div className="l">Text online</div>
         </div>
         <div className="b-stat">
-          <div className="n">{totalLive}</div>
-          <div className="l">Live</div>
+          <div className="n">{totalMediaDone}</div>
+          <div className="l">Komplett fertig</div>
         </div>
         <div className="b-stat">
-          <div className="n" style={{ color: totalIssues ? "var(--rust)" : "var(--sage)" }}>
-            {totalIssues}
+          <div className="n" style={{ color: totalOverdue ? "var(--danger)" : "var(--success)" }}>
+            {totalOverdue}
           </div>
-          <div className="l">Blocked</div>
+          <div className="l">Überfällig</div>
         </div>
       </div>
 
-      <h3 style={{ ...sectionTitle, marginTop: "20px" }}>Notifications</h3>
+      <h3 className="section-title">Benachrichtigungen</h3>
       <NotificationPauses />
-
-      <h3 style={{ ...sectionTitle, marginTop: "20px" }}>Files</h3>
-      <div className="upload-gate" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
-        <span>
-          Download every uploaded document as one zip — files also live permanently in Supabase Storage, browsable
-          from the Supabase dashboard any time.
-        </span>
-        <a className="mini-btn" href="/api/files/export">
-          download all files (.zip)
-        </a>
-      </div>
     </>
   );
 }

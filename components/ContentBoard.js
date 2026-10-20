@@ -21,7 +21,7 @@ export default function ContentBoard({ items, onOpenCard, onMove, profile }) {
       <div className="filters">
         {isManager ? (
           <select value={filterPerson} onChange={(e) => setFilterPerson(e.target.value)}>
-            <option value="All">All writers</option>
+            <option value="All">Alle Autor:innen</option>
             {people.map((p) => (
               <option key={p} value={p}>
                 {p}
@@ -29,10 +29,10 @@ export default function ContentBoard({ items, onOpenCard, onMove, profile }) {
             ))}
           </select>
         ) : (
-          <span className="hint">showing your tasks ({ownName || "unassigned"})</span>
+          <span className="hint">deine Aufgaben ({ownName || "nicht zugewiesen"})</span>
         )}
         <select value={filterType} onChange={(e) => setFilterType(e.target.value)}>
-          <option value="All">All content types</option>
+          <option value="All">Alle Content-Typen</option>
           {TYPES.map((t) => (
             <option key={t} value={t}>
               {t}
@@ -40,7 +40,7 @@ export default function ContentBoard({ items, onOpenCard, onMove, profile }) {
           ))}
         </select>
         <div className="spacer" />
-        <div className="hint">drag a card, or tap it to open</div>
+        <div className="hint">Karte ziehen oder antippen zum Öffnen</div>
       </div>
 
       <div className="board cols3">
@@ -77,8 +77,8 @@ export default function ContentBoard({ items, onOpenCard, onMove, profile }) {
         })}
       </div>
       <p className="note">
-        <b>Handoff:</b> moving a card to <b>Ready for Upload</b> sends it straight into the Upload Team&apos;s Queued
-        column — no re-typing, no Slack message needed.
+        <b>Übergabe:</b> Sobald eine Karte auf <b>Online</b> steht, landet sie automatisch beim Media-Team in der
+        Spalte <b>Bereit für Medien</b> – keine extra Nachricht nötig.
       </p>
     </>
   );

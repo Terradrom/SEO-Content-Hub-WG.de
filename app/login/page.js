@@ -3,6 +3,11 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "../../lib/supabase-browser";
 
+const ERROR_DE = {
+  "Invalid login credentials": "E-Mail oder Passwort ist falsch.",
+  "Email not confirmed": "Diese E-Mail-Adresse ist noch nicht bestätigt.",
+};
+
 export default function LoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -18,7 +23,7 @@ export default function LoginPage() {
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (error) {
-      setError(error.message);
+      setError(ERROR_DE[error.message] || error.message);
       return;
     }
     router.push("/");
@@ -26,25 +31,22 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="wrap" style={{ maxWidth: 380, marginTop: "15vh" }}>
-      <h1 style={{ marginBottom: 4 }}>Content Hub</h1>
-      <p className="hint" style={{ marginBottom: 24 }}>
-        Sign in with your team account.
-      </p>
-      <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        <input type="email" placeholder="you@example.com" value={email} onChange={(e) => setEmail(e.target.value)} required />
-        <input
-          type="password"
-          placeholder="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-        {error && <div style={{ color: "var(--rust)" }}>{error}</div>}
-        <button className="save-note-btn" type="submit" disabled={loading}>
-          {loading ? "Signing in…" : "Sign in"}
-        </button>
-      </form>
+    <div className="wrap" style={{ maxWidth: 400, marginTop: "12vh" }}>
+      <div className="login-card">
+        <img className="brand-logo" src="/logo.png" alt="Werbegeschenk.de" />
+        <h1>SEO Content Hub</h1>
+        <p className="hint" style={{ marginBottom: 22 }}>
+          Melde dich mit deinem Team-Konto an.
+        </p>
+        <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+          <input type="email" placeholder="name@beispiel.de" value={email} onChange={(e) => setEmail(e.target.value)} required />
+          <input type="password" placeholder="Passwort" value={password} onChange={(e) => setPassword(e.target.value)} required />
+          {error && <div style={{ color: "var(--danger)", fontSize: 13 }}>{error}</div>}
+          <button className="save-note-btn" type="submit" disabled={loading}>
+            {loading ? "Anmeldung läuft…" : "Anmelden"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

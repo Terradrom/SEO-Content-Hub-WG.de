@@ -1,12 +1,11 @@
 "use client";
 
 const TABS = [
-  { id: "content", label: "Content Team", roles: ["content", "manager"] },
-  { id: "upload", label: "Upload Team", roles: ["upload", "manager"] },
-  { id: "media", label: "Media Team", roles: ["media", "manager"] },
+  { id: "content", label: "Content-Team", roles: ["content", "manager"] },
+  { id: "media", label: "Media-Team", roles: ["media", "manager"] },
   { id: "manager", label: "Manager", roles: ["manager"] },
-  { id: "map", label: "Topic Map", roles: ["content", "upload", "media", "manager"] },
-  { id: "bonus", label: "Bonus Arcade", roles: ["content", "upload", "media", "manager"] },
+  { id: "map", label: "Themen-Map", roles: ["content", "media", "manager"] },
+  { id: "bonus", label: "Bonus-Arcade", roles: ["content", "media", "manager"] },
 ];
 
 export default function Nav({ view, setView, roles }) {

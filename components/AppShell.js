@@ -3,17 +3,16 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Nav from "./Nav";
 import ContentBoard from "./ContentBoard";
-import UploadBoard from "./UploadBoard";
 import MediaBoard from "./MediaBoard";
 import ManagerDashboard from "./ManagerDashboard";
 import TopicMap from "./TopicMap";
 import BonusArcade from "./BonusArcade";
 import CardModal from "./CardModal";
 import ScrollToTopButton from "./ScrollToTopButton";
-import { fetchItems, patchItem, getDataProvenance } from "../lib/data";
+import { fetchItems, patchItem, getDataProvenance, ROLE_LABELS } from "../lib/data";
 import { supabaseBrowser } from "../lib/supabase-browser";
 
-const DEFAULT_VIEW_BY_ROLE = { content: "content", upload: "upload", media: "media", manager: "content" };
+const DEFAULT_VIEW_BY_ROLE = { content: "content", media: "media", manager: "content" };
 
 export default function AppShell({ user, profile }) {
   const router = useRouter();
@@ -42,14 +41,13 @@ export default function AppShell({ user, profile }) {
   const provenance = getDataProvenance();
 
   async function moveItem(id, newStatus, field) {
-    // field is "contentStatus" / "uploadStatus" / "mediaStatus" depending on board
+    // field is "contentStatus" / "mediaStatus" depending on board
     const current = items.find((it) => it.id === id);
     if (!current) return;
     setItems((prev) => prev.map((it) => (it.id === id ? { ...it, [field]: newStatus } : it)));
     try {
-      // The server may apply further handoffs (e.g. auto-queueing for the
-      // next team) beyond the single field we sent — use its real
-      // response as the new source of truth instead of our local guess.
+      // The server may apply the media handoff beyond the single field we
+      // sent — use its real response as the new source of truth.
       const updated = await patchItem(id, { [field]: newStatus });
       setItems((prev) => prev.map((it) => (it.id === id ? { ...it, ...updated } : it)));
     } catch (err) {
@@ -73,24 +71,27 @@ export default function AppShell({ user, profile }) {
     <div className="wrap">
       <header className="masthead">
         <div className="masthead-title">
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <h1>Content Hub</h1>
-            <span className="stamp-mini">Live board</span>
+          <img className="brand-logo" src="/logo.png" alt="Werbegeschenk.de" />
+          <div>
+            <h1>SEO Content Hub</h1>
+            <p>Content-Team schreibt &amp; veröffentlicht → Media-Team ergänzt die Bilder. Eine Quelle für alles.</p>
           </div>
-          <p>Content team drafts &amp; uploads → Data Entry team publishes &amp; QAs. Two queues, one source of truth.</p>
         </div>
         <div className="masthead-meta">
-          {provenance && (
-            <div className="hint" title="Regenerate via scripts/import_from_xlsx.py">
-              data as of {provenance.importedAt?.slice(0, 10)} · {provenance.sourceFile} · {provenance.itemCount} items
+          {provenance?.itemCount > 0 && (
+            <div className="hint" title="Neu erzeugen über scripts/import_from_xlsx.mjs">
+              Daten vom {provenance.importedAt?.slice(0, 10)} · {provenance.sourceFile} · {provenance.itemCount} Aufgaben
             </div>
           )}
           <div className="account-bar">
             <span className="hint">
-              {user?.email} {roles.length ? `· ${roles.join(" + ")}` : "· no role assigned yet — ask your manager"}
+              {user?.email}{" "}
+              {roles.length
+                ? `· ${roles.map((r) => ROLE_LABELS[r] || r).join(" + ")}`
+                : "· noch keine Rolle zugewiesen – bitte beim Manager melden"}
             </span>
             <button className="signout-btn" onClick={signOut}>
-              Sign out
+              Abmelden
             </button>
           </div>
         </div>
@@ -98,8 +99,8 @@ export default function AppShell({ user, profile }) {
 
       <Nav view={view} setView={setView} roles={roles} />
 
-      {loading && <p className="note">Loading items…</p>}
-      {loadError && <p className="note" style={{ color: "var(--rust)" }}>Couldn&apos;t load items: {loadError}</p>}
+      {loading && <p className="note">Aufgaben werden geladen…</p>}
+      {loadError && <p className="note" style={{ color: "var(--danger)" }}>Aufgaben konnten nicht geladen werden: {loadError}</p>}
 
       {!loading && !loadError && (
         <>
@@ -111,13 +112,6 @@ export default function AppShell({ user, profile }) {
               profile={profile}
             />
           )}
-          {view === "upload" && (
-            <UploadBoard
-              items={items}
-              onOpenCard={setOpenCardId}
-              onMove={(id, status) => moveItem(id, status, "uploadStatus")}
-            />
-          )}
           {view === "media" && (
             <MediaBoard
               items={items}
@@ -127,7 +121,7 @@ export default function AppShell({ user, profile }) {
           )}
           {view === "manager" && <ManagerDashboard items={items} />}
           {view === "map" && <TopicMap />}
-          {view === "bonus" && <BonusArcade role={role} items={items} />}
+          {view === "bonus" && <BonusArcade items={items} />}
         </>
       )}
 

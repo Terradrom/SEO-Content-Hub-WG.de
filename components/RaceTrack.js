@@ -5,7 +5,7 @@ function computeRacers(items) {
   const people = derivePeople(items);
   return people.map((name) => {
     const mine = items.filter((i) => i.person === name);
-    const done = mine.filter((i) => i.contentStatus === "Ready for Upload").length;
+    const done = mine.filter((i) => i.contentStatus === "Online").length;
     const pct = mine.length ? Math.round((done / mine.length) * 100) : 0;
     return { id: name.toLowerCase(), name, done, total: mine.length, pct };
   });
@@ -19,19 +19,19 @@ export default function RaceTrack({ items }) {
     <section className="panel">
       <div className="panel-head">
         <div>
-          <h2>🚀 Speed Race — Content Team</h2>
-          <p>First writer to 100% of their assigned pieces moved to Ready for Upload takes the lead and wins 50 RM.</p>
+          <h2>🚀 Speed-Rennen – Content-Team</h2>
+          <p>Wer als Erste:r 100 % der eigenen Aufgaben auf Online gebracht hat, gewinnt den Speed-Bonus.</p>
         </div>
-        <span className="rule-chip">live — updates as items move to Ready for Upload</span>
+        <span className="rule-chip">live – aktualisiert sich, sobald Karten auf Online gehen</span>
       </div>
 
       <div className="race-track">
-        <div className="stars" />
+        {racers.length === 0 && <div className="empty-col">Noch keine Aufgaben – das Rennen startet nach dem Import.</div>}
         {racers.map((r) => (
           <div className="lane" key={r.id}>
             <div className="lane-label">
               <b>{r.name}</b>
-              <span className="pace-chip ahead">
+              <span className="pace-chip">
                 {r.done}/{r.total} · {r.pct}%
               </span>
             </div>
@@ -39,7 +39,6 @@ export default function RaceTrack({ items }) {
               <div className="finish" />
               <div className="rocket" style={{ left: `${r.pct}%` }}>
                 {r.pct >= 100 ? "🏁" : "🚀"}
-                {r.pct < 100 && <span className="flame" />}
               </div>
             </div>
           </div>
@@ -47,7 +46,7 @@ export default function RaceTrack({ items }) {
       </div>
 
       <div className={`winner-banner ${winner ? "show" : ""}`}>
-        🏆 {winner ? winner.name : ""} reached 100% of their assigned pieces — wins the 50 RM speed bonus.
+        🏆 {winner ? winner.name : ""} hat 100 % der eigenen Aufgaben online – Speed-Bonus gewonnen.
       </div>
     </section>
   );
