@@ -1,18 +1,35 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { copyText } from "../lib/format";
 import { CONTENT_STATUSES, MEDIA_STATUSES } from "../lib/data";
+import SeoBrief from "./SeoBrief";
 
 export default function CardModal({ item, onClose, onSave, profile, roles, boardView }) {
   const [form, setForm] = useState({ ...item });
   const [saveMsg, setSaveMsg] = useState("");
   const [copiedField, setCopiedField] = useState(null);
   const [assignMsg, setAssignMsg] = useState("");
-
-  if (!item) return null;
+  const [writers, setWriters] = useState([]);
 
   const myRoles = roles || [];
   const isManager = myRoles.includes("manager");
+
+  // Managers assign cards to people from the content team.
+  useEffect(() => {
+    if (!isManager) return;
+    fetch("/api/profiles")
+      .then((r) => (r.ok ? r.json() : []))
+      .then((list) =>
+        setWriters(
+          list
+            .filter((p) => p.display_name && (p.roles?.length ? p.roles : [p.role]).some((r) => r === "content" || r === "manager"))
+            .map((p) => p.display_name)
+        )
+      )
+      .catch(() => {});
+  }, [isManager]);
+
+  if (!item) return null;
   const canEditMedia = isManager || myRoles.includes("media");
   // Which view to render is about which board the card was opened from, not
   // a fixed role — someone with content + media sees the simplified media
@@ -98,7 +115,15 @@ export default function CardModal({ item, onClose, onSave, profile, roles, board
     return (
       <div className="info-row">
         <span className="il">Seiten-URL</span>
-        <span className="iv">{form.pageLink || "—"}</span>
+        <span className="iv">
+          {form.pageLink ? (
+            <a href={form.pageLink} target="_blank" rel="noreferrer">
+              {form.pageLink.replace(/^https?:\/\/(www\.)?/, "")}
+            </a>
+          ) : (
+            "—"
+          )}
+        </span>
         <button className="copy-btn" onClick={() => handleCopy("url", form.pageLink)}>
           {copiedField === "url" ? "kopiert ✓" : "kopieren"}
         </button>
@@ -152,7 +177,9 @@ export default function CardModal({ item, onClose, onSave, profile, roles, board
           </button>
         </div>
         <div className="sub">
-          {form.type} · zugewiesen an {form.person}
+          {form.type}
+          {form.month ? ` · ${form.round === 2 ? "Runde 2 (später)" : `Monat ${form.month}`}` : ""} ·{" "}
+          {form.person ? `zugewiesen an ${form.person}` : "noch niemand zugewiesen"}
         </div>
 
         {fullyDone && <div className="done-badge" style={{ marginBottom: 12 }}>✅ Text + Medien online – komplett erledigt</div>}
@@ -163,23 +190,10 @@ export default function CardModal({ item, onClose, onSave, profile, roles, board
         )}
 
         <div className="info-row">
-          <span className="il">Themenbaum</span>
-          <span className="iv">{form.topicTreeLink || "—"}</span>
-          <button className="copy-btn" onClick={() => handleCopy("tree", form.topicTreeLink)}>
-            {copiedField === "tree" ? "kopiert ✓" : "kopieren"}
-          </button>
+          <span className="il">Cluster</span>
+          <span className="iv">{form.topicTreeLink || form.cluster || "—"}</span>
         </div>
         {pageLinkRow()}
-        <div className="kw-box">
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-            <b>Keywords</b>
-            <button className="copy-btn" onClick={() => handleCopy("keywords", form.keywords)} style={{ flexShrink: 0 }}>
-              {copiedField === "keywords" ? "kopiert ✓" : "alle kopieren"}
-            </button>
-          </div>
-          <br />
-          {form.keywords || "—"}
-        </div>
 
         <div className="field-row">
           <div className="field">
@@ -194,9 +208,24 @@ export default function CardModal({ item, onClose, onSave, profile, roles, board
           </div>
           <div className="field">
             <label>Deadline</label>
-            <input type="date" value={form.deadline || ""} onChange={(e) => patch({ deadline: e.target.value })} />
+            <input type="date" value={form.deadline || ""} onChange={(e) => patch({ deadline: e.target.value || null })} />
           </div>
+          {isManager && (
+            <div className="field">
+              <label>Zugewiesen an</label>
+              <select value={form.person || ""} onChange={(e) => patch({ person: e.target.value || null })}>
+                <option value="">– niemand –</option>
+                {[...new Set([...writers, form.person].filter(Boolean))].map((w) => (
+                  <option key={w} value={w}>
+                    {w}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
+
+        <SeoBrief item={form} />
 
         {form.contentStatus === "Online" ? (
           <>

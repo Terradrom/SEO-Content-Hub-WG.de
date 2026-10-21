@@ -3,10 +3,14 @@
 // Usage:
 //   node --env-file=.env.local scripts/seed_supabase.mjs           (append/upsert)
 //   node --env-file=.env.local scripts/seed_supabase.mjs --reset   (delete all items first)
+//
+// Note: an upsert overwrites status, person and deadline with the values in
+// the seed file – re-run with care once the team is working on the board.
 import { createClient } from "@supabase/supabase-js";
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
+import { BRIEF_FIELDS } from "../lib/items-map.js";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -15,7 +19,7 @@ const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL, process.env.
 });
 
 function itemToRow(item) {
-  return {
+  const row = {
     id: item.id,
     person: item.person,
     type: item.type,
@@ -30,6 +34,8 @@ function itemToRow(item) {
     mobile: !!item.mobile,
     indexed: !!item.indexed,
   };
+  for (const [key, column] of Object.entries(BRIEF_FIELDS)) if (key in item) row[column] = item[key];
+  return row;
 }
 
 async function main() {
@@ -39,7 +45,8 @@ async function main() {
 
   if (reset) {
     console.log("Resetting: deleting all rows from items...");
-    await supabase.from("items").delete().neq("id", "");
+    const { error } = await supabase.from("items").delete().neq("id", "");
+    if (error) throw error;
   }
 
   if (items.length === 0) {
@@ -48,8 +55,10 @@ async function main() {
   }
 
   const rows = items.map(itemToRow);
-  const { error } = await supabase.from("items").upsert(rows, { onConflict: "id" });
-  if (error) throw error;
+  for (let i = 0; i < rows.length; i += 200) {
+    const { error } = await supabase.from("items").upsert(rows.slice(i, i + 200), { onConflict: "id" });
+    if (error) throw error;
+  }
   console.log(`Upserted ${rows.length} items. Done.`);
 }
 

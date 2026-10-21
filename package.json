@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "import-data": "node scripts/import_from_xlsx.mjs"
+    "import-data": "node scripts/import_keyword_sheet.mjs"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.0",

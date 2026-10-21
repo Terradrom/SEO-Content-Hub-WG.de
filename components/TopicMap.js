@@ -144,7 +144,7 @@ export default function TopicMap() {
             </svg>
             <div className="map-panel">
               {HUBS.length === 0
-                ? "Noch keine Daten – die Themen-Map entsteht automatisch aus der Spalte „Topic Ideas“ der deutschen Tabelle."
+                ? "Noch keine Daten – die Themen-Map entsteht beim Import der Keyword-Tabelle."
                 : "Klick auf einen Hub, um seine Seiten und deren Verlinkung zu sehen. Die Linienstärke zeigt, wie viele Links zwischen zwei Hubs bestehen."}
             </div>
           </>
@@ -240,10 +240,10 @@ export default function TopicMap() {
         )}
       </div>
       <p className="note">
-        <b>Echte Verlinkungsdaten:</b> erzeugt aus der Spalte „Topic Ideas“ der Tabelle (🔗 Link to: X, Y, Z) über
-        alle {TOPIC_NODES.length} Seiten – {TOPIC_CROSS_EDGES.length} Links passen zu einer bestehenden Seite.
-        Verweise auf noch nicht angelegte Seiten fehlen. Zum Aktualisieren <code>scripts/build_topic_map.mjs</code>
-        mit einem frischen Export ausführen.
+        <b>So entsteht die Map:</b> Jeder Hub ist ein Cluster (eine Kategorie mit ihren Unterkategorien und Produkten),
+        insgesamt {TOPIC_NODES.length} Seiten. Die {TOPIC_CROSS_EDGES.length} Verbindungen sind die internen Links aus den
+        SEO-Briefings, die auf eine andere Seite im Plan zeigen. Aktualisiert sich bei jedem Import der Keyword-Tabelle
+        (<code>scripts/import_keyword_sheet.mjs</code>).
       </p>
     </>
   );

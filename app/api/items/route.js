@@ -12,7 +12,7 @@ export async function GET() {
   }
 
   const supabase = supabaseAdmin();
-  const { data, error } = await supabase.from("items").select("*").order("deadline", { ascending: true });
+  const { data, error } = await supabase.from("items").select("*").order("sort_order", { ascending: true, nullsFirst: false });
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -78,11 +78,6 @@ export default function AppShell({ user, profile }) {
           </div>
         </div>
         <div className="masthead-meta">
-          {provenance?.itemCount > 0 && (
-            <div className="hint" title="Neu erzeugen über scripts/import_from_xlsx.mjs">
-              Daten vom {provenance.importedAt?.slice(0, 10)} · {provenance.sourceFile} · {provenance.itemCount} Aufgaben
-            </div>
-          )}
           <div className="account-bar">
             <span className="hint">
               {user?.email}{" "}
@@ -119,7 +114,7 @@ export default function AppShell({ user, profile }) {
               onMove={(id, status) => moveItem(id, status, "mediaStatus")}
             />
           )}
-          {view === "manager" && <ManagerDashboard items={items} />}
+          {view === "manager" && <ManagerDashboard items={items} provenance={provenance} />}
           {view === "map" && <TopicMap />}
           {view === "bonus" && <BonusArcade items={items} />}
         </>

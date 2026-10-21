@@ -33,7 +33,25 @@ create table if not exists items (
   updated_at timestamptz not null default now()
 );
 
+-- ── SEO brief per item (imported from the keyword sheet) ───────────────
+-- cluster = the category the item belongs to (topic cluster); month/round
+-- = when it's planned (round 2 = later); sort_order = order within the
+-- plan. links = internal links as [{ "label": "...", "url": "..." }].
+alter table items add column if not exists cluster text;
+alter table items add column if not exists month smallint;
+alter table items add column if not exists round smallint not null default 1;
+alter table items add column if not exists sort_order integer;
+alter table items add column if not exists main_keyword text default '';
+alter table items add column if not exists secondary_keywords text default '';
+alter table items add column if not exists product_keywords text default '';
+alter table items add column if not exists longtail_keywords text default '';
+alter table items add column if not exists topics text default '';
+alter table items add column if not exists links jsonb not null default '[]'::jsonb;
+alter table items add column if not exists writer_note text default '';
+
 create index if not exists items_person_idx on items (person);
+create index if not exists items_cluster_idx on items (cluster);
+create index if not exists items_plan_idx on items (round, month, sort_order);
 create index if not exists items_content_status_idx on items (content_status);
 create index if not exists items_media_status_idx on items (media_status);
 

@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { derivePeople, MEDIA_STATUSES, ROLE_LABELS } from "../lib/data";
+import { derivePeople, MEDIA_STATUSES, ROLE_LABELS, PERIODS, inPeriod } from "../lib/data";
 import { daysUntil, fmtDate } from "../lib/format";
 
 function nextDeadlineFor(items, person) {
@@ -139,19 +139,56 @@ function NotificationPauses() {
   );
 }
 
-export default function ManagerDashboard({ items }) {
+export default function ManagerDashboard({ items, provenance }) {
   const people = derivePeople(items);
   const totalOnline = items.filter((i) => i.contentStatus === "Online").length;
   const totalMediaDone = items.filter((i) => i.mediaStatus === "Medien online").length;
   const totalOverdue = items.filter((i) => i.contentStatus !== "Online" && i.deadline && daysUntil(i.deadline) < 0).length;
 
+  const PLAN_TYPES = ["Kategorie", "Unterkategorie", "Produkt"];
+
   return (
     <>
+      <h3 className="section-title">Cluster-Plan – Fortschritt pro Monat</h3>
+      <section className="dash">
+        {PERIODS.filter((p) => p.id !== "all").map((p) => {
+          const inP = items.filter((i) => inPeriod(i, p.id));
+          const online = inP.filter((i) => i.contentStatus === "Online").length;
+          const pct = inP.length ? Math.round((online / inP.length) * 100) : 0;
+          return (
+            <div className="dash-card" key={p.id}>
+              <div className="who">
+                <span>{p.label.split(" · ")[0]}</span>
+                <span>
+                  {online}/{inP.length}
+                </span>
+              </div>
+              <div className="bar-track">
+                <div className="bar-fill" style={{ width: `${pct}%`, background: p.id === "r2" ? "var(--slate)" : "var(--navy)" }} />
+              </div>
+              <div className="meta">
+                <span>{p.label.split(" · ").slice(1).join(" · ")}</span>
+              </div>
+              <div className="meta">
+                {PLAN_TYPES.map((t) => {
+                  const ofType = inP.filter((i) => i.type === t);
+                  return ofType.length ? (
+                    <span key={t}>
+                      {t === "Unterkategorie" ? "Unterkat." : t}: {ofType.filter((i) => i.contentStatus === "Online").length}/{ofType.length}
+                    </span>
+                  ) : null;
+                })}
+              </div>
+            </div>
+          );
+        })}
+      </section>
+
       <h3 className="section-title">Content-Team – nach Autor:in</h3>
       <section className="dash">
         {people.length === 0 && (
           <div className="dash-card">
-            <div className="meta">Noch keine Aufgaben – sie erscheinen nach dem Import der Tabelle.</div>
+            <div className="meta">Noch niemand zugewiesen – Aufgaben in der Karte unter „Zugewiesen an“ verteilen.</div>
           </div>
         )}
         {people.map((p) => {
@@ -218,6 +255,13 @@ export default function ManagerDashboard({ items }) {
 
       <h3 className="section-title">Benachrichtigungen</h3>
       <NotificationPauses />
+
+      {provenance?.itemCount > 0 && (
+        <p className="note">
+          <b>Datenquelle:</b> {provenance.sourceFile} · importiert am {provenance.importedAt?.slice(0, 10)} ·{" "}
+          {provenance.itemCount} Aufgaben. Neu einlesen mit <code>scripts/import_keyword_sheet.mjs</code>.
+        </p>
+      )}
     </>
   );
 }

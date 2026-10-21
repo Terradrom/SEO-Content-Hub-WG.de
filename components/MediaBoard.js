@@ -6,6 +6,8 @@ import { TYPES, MEDIA_STATUSES } from "../lib/data";
 export default function MediaBoard({ items, onOpenCard, onMove }) {
   const [filterType, setFilterType] = useState("All");
   const [dragOverCol, setDragOverCol] = useState(null);
+  // On phones only one status column is shown at a time.
+  const [mobileCol, setMobileCol] = useState(MEDIA_STATUSES[0]);
 
   const eligible = items.filter((i) => i.mediaStatus);
   const filtered = eligible.filter((i) => filterType === "All" || i.type === filterType);
@@ -25,11 +27,19 @@ export default function MediaBoard({ items, onOpenCard, onMove }) {
         <div className="hint">hier erscheinen nur Texte, die das Content-Team schon veröffentlicht hat</div>
       </div>
 
+      <div className="col-switch" role="tablist" aria-label="Spalte">
+        {MEDIA_STATUSES.map((status) => (
+          <button key={status} className={mobileCol === status ? "active" : ""} onClick={() => setMobileCol(status)} role="tab" aria-selected={mobileCol === status}>
+            {status} <span>{filtered.filter((i) => i.mediaStatus === status).length}</span>
+          </button>
+        ))}
+      </div>
+
       <div className="board cols4">
         {MEDIA_STATUSES.map((status) => {
           const colItems = filtered.filter((i) => i.mediaStatus === status);
           return (
-            <div key={status} className={`col ${dragOverCol === status ? "dragover" : ""}`}>
+            <div key={status} className={`col ${dragOverCol === status ? "dragover" : ""} ${mobileCol === status ? "" : "col-mobile-hidden"}`}>
               <div className="col-head">
                 <h3>{status}</h3>
                 <span className="count">{colItems.length}</span>
