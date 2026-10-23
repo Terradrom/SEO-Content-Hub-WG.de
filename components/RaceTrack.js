@@ -1,6 +1,9 @@
 "use client";
 import { derivePeople } from "../lib/data";
 
+// Speed-Bonus für das Content-Team
+const PRIZE = "35 USD";
+
 function computeRacers(items) {
   const people = derivePeople(items);
   return people.map((name) => {
@@ -20,7 +23,7 @@ export default function RaceTrack({ items }) {
       <div className="panel-head">
         <div>
           <h2>🚀 Speed-Rennen – Content-Team</h2>
-          <p>Wer als Erste:r 100 % der eigenen Aufgaben auf Online gebracht hat, gewinnt den Speed-Bonus.</p>
+          <p>Wer als Erste:r 100 % der eigenen Aufgaben auf Online gebracht hat, gewinnt den Speed-Bonus von {PRIZE}.</p>
         </div>
         <span className="rule-chip">live – aktualisiert sich, sobald Karten auf Online gehen</span>
       </div>
@@ -46,7 +49,7 @@ export default function RaceTrack({ items }) {
       </div>
 
       <div className={`winner-banner ${winner ? "show" : ""}`}>
-        🏆 {winner ? winner.name : ""} hat 100 % der eigenen Aufgaben online – Speed-Bonus gewonnen.
+        🏆 {winner ? winner.name : ""} hat 100 % der eigenen Aufgaben online – Speed-Bonus von {PRIZE} gewonnen.
       </div>
     </section>
   );
